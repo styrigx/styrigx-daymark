@@ -1,38 +1,52 @@
 // /api/quotes —— 句子的读和写。
 //
 // GET    /api/quotes             任何有效会话：owner 拿全部，visitor 只拿公开的。按添加时间倒序。
-//                                返回 {ok:true, owner, quotes:[{id,text,trans,author,source,tags,visibility,created_at,updated_at}]}
-// POST   /api/quotes             owner + 同源：新增。body {text, trans?, author?, source?, tags?, visibility?}
-// PUT    /api/quotes?id=<id>     owner + 同源：修改，只改给了的字段
-// DELETE /api/quotes?id=<id>     owner + 同源：删除
+//                                返回 {ok:true, owner, quotes:[{id,text,trans,author,source,source_type,tags,visibility,created_at,updated_at}]}
+//                                owner 的每句另带 note（随手一笔）和 collections（所在百味专题 id）；访客的响应里没有这两个键。
+// POST   /api/quotes             owner + 同源：新增。body {text, trans?, author?, source?, source_type?, tags?, visibility?, note?, collections?}
+// PUT    /api/quotes?id=<id>     owner + 同源：修改，只改给了的字段（collections 给了就按它重设归属：新加的排到专题末尾）
+// DELETE /api/quotes?id=<id>     owner + 同源：删除（连同它在百味专题里的位置）
 // 写操作成功返回 {ok:true, quote}（删除返回 {ok:true}）。
-// 错误：400 bad-json / bad-body / bad-text / bad-visibility / nothing / bad-id；403 origin / role；404 not-found；409 limit；413 too-large
-import { json, err, methodNotAllowed, isSameOrigin } from './_lib.js';
-import { verifySession, requireOwner } from './_auth.js';
-import { ensureSchema, parseQuote, rowToQuote, newId, ID_RE, LIMITS } from './_quotes.js';
+// 错误：400 bad-json / bad-body / bad-text / bad-visibility / bad-source-type / bad-collections / nothing / bad-id；
+//       403 origin / role；404 not-found；409 limit；413 too-large
+import { json, err, methodNotAllowed } from './_lib.js';
+import { verifySession } from './_auth.js';
+import { readBody, guardWrite, idParam } from './_write.js';
+import { ensureSchema, parseQuote, rowToQuote, newId, LIMITS, QUOTE_COLS } from './_quotes.js';
 
-const MAX_BODY = 8192;
-const COLS = 'id, text, trans, author, source, tags, visibility, created_at, updated_at';
+/** 一句所在的专题 id（按专题自己的顺序） */
+async function collectionsOf(db, id) {
+  const { results } = await db.prepare(
+    'SELECT cq.collection_id AS c FROM collection_quotes cq JOIN collections c ON c.id = cq.collection_id WHERE cq.quote_id = ?1 ORDER BY c.sort, c.created_at, c.id'
+  ).bind(id).all();
+  return (results || []).map((r) => r.c);
+}
 
-async function readBody(request) {
-  const raw = await request.text();
-  if (raw.length > MAX_BODY) return { response: err('too-large', 413) };
-  try {
-    return { body: JSON.parse(raw) };
-  } catch (e) {
-    return { response: err('bad-json', 400) };
+/** 按给的专题 id 重设一句的归属：不存在的专题忽略；新加入的排到该专题末尾，原来就在的位置不变 */
+async function setCollections(db, quoteId, ids) {
+  const { results } = await db.prepare('SELECT id FROM collections').all();
+  const exist = new Set((results || []).map((r) => r.id));
+  const want = ids.filter((c) => exist.has(c));
+  const have = await collectionsOf(db, quoteId);
+  const stmts = [];
+  for (const c of have) {
+    if (!want.includes(c)) stmts.push(db.prepare('DELETE FROM collection_quotes WHERE collection_id = ?1 AND quote_id = ?2').bind(c, quoteId));
   }
+  for (const c of want) {
+    if (have.includes(c)) continue;
+    stmts.push(db.prepare(
+      'INSERT OR IGNORE INTO collection_quotes (collection_id, quote_id, position) VALUES (?1, ?2, (SELECT COALESCE(MAX(position), -1) + 1 FROM collection_quotes WHERE collection_id = ?1))'
+    ).bind(c, quoteId));
+  }
+  if (stmts.length) await db.batch(stmts);
 }
 
-async function guardWrite(context) {
-  if (!isSameOrigin(context.request)) return err('origin', 403);
-  const { response } = await requireOwner(context);
-  return response;
-}
-
-function idParam(request) {
-  const id = new URL(request.url).searchParams.get('id') || '';
-  return ID_RE.test(id) ? id : '';
+async function ownerQuote(db, id) {
+  const row = await db.prepare(`SELECT ${QUOTE_COLS} FROM quotes WHERE id = ?1`).bind(id).first();
+  if (!row) return null;
+  const q = rowToQuote(row, true);
+  q.collections = await collectionsOf(db, id);
+  return q;
 }
 
 export async function onRequestGet(context) {
@@ -40,11 +54,22 @@ export async function onRequestGet(context) {
   const role = await verifySession(request, env);
   if (!role) return err('unauthorized', 401);
   await ensureSchema(env.DB);
-  const sql = role === 'owner'
-    ? `SELECT ${COLS} FROM quotes ORDER BY created_at DESC, id`
-    : `SELECT ${COLS} FROM quotes WHERE visibility = 'public' ORDER BY created_at DESC, id`;
+  const owner = role === 'owner';
+  const sql = owner
+    ? `SELECT ${QUOTE_COLS} FROM quotes ORDER BY created_at DESC, id`
+    : `SELECT ${QUOTE_COLS} FROM quotes WHERE visibility = 'public' ORDER BY created_at DESC, id`;
   const { results } = await env.DB.prepare(sql).all();
-  return json({ ok: true, owner: role === 'owner', quotes: (results || []).map(rowToQuote) });
+  const quotes = (results || []).map((r) => rowToQuote(r, owner));
+  if (owner) {
+    const m = await env.DB.prepare(
+      'SELECT cq.quote_id AS q, cq.collection_id AS c FROM collection_quotes cq JOIN collections c ON c.id = cq.collection_id ORDER BY c.sort, c.created_at, c.id'
+    ).all();
+    /** @type {Record<string, string[]>} */
+    const by = {};
+    for (const r of m.results || []) (by[r.q] = by[r.q] || []).push(r.c);
+    for (const q of quotes) q.collections = by[q.id] || [];
+  }
+  return json({ ok: true, owner, quotes });
 }
 
 export async function onRequestPost(context) {
@@ -62,10 +87,10 @@ export async function onRequestPost(context) {
   const now = Date.now();
   const id = newId();
   await env.DB.prepare(
-    'INSERT INTO quotes (id, text, trans, author, source, tags, visibility, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8)'
-  ).bind(id, f.text, f.trans, f.author, f.source, JSON.stringify(f.tags), f.visibility, now).run();
-  const row = await env.DB.prepare(`SELECT ${COLS} FROM quotes WHERE id = ?1`).bind(id).first();
-  return json({ ok: true, quote: rowToQuote(row) }, 201);
+    'INSERT INTO quotes (id, text, trans, author, source, source_type, tags, visibility, note, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?10)'
+  ).bind(id, f.text, f.trans, f.author, f.source, f.source_type, JSON.stringify(f.tags), f.visibility, f.note, now).run();
+  if (p.collections && p.collections.length) await setCollections(env.DB, id, p.collections);
+  return json({ ok: true, quote: await ownerQuote(env.DB, id) }, 201);
 }
 
 export async function onRequestPut(context) {
@@ -90,8 +115,8 @@ export async function onRequestPut(context) {
   args.push(id);
   const res = await env.DB.prepare('UPDATE quotes SET ' + sets.join(', ') + ' WHERE id = ?' + args.length).bind(...args).run();
   if (!res.meta || !res.meta.changes) return err('not-found', 404);
-  const row = await env.DB.prepare(`SELECT ${COLS} FROM quotes WHERE id = ?1`).bind(id).first();
-  return json({ ok: true, quote: rowToQuote(row) });
+  if (p.collections) await setCollections(env.DB, id, p.collections);
+  return json({ ok: true, quote: await ownerQuote(env.DB, id) });
 }
 
 export async function onRequestDelete(context) {
@@ -103,6 +128,7 @@ export async function onRequestDelete(context) {
   await ensureSchema(env.DB);
   const res = await env.DB.prepare('DELETE FROM quotes WHERE id = ?1').bind(id).run();
   if (!res.meta || !res.meta.changes) return err('not-found', 404);
+  await env.DB.prepare('DELETE FROM collection_quotes WHERE quote_id = ?1').bind(id).run();
   return json({ ok: true });
 }
 

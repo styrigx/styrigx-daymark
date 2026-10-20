@@ -18,8 +18,8 @@
 @font-face{font-family:'Inter Fallback';src:local('Arial');size-adjust:107%;ascent-override:90%;descent-override:23%;line-gap-override:0%;}
 :root{--nav-h:68px}/* 顶栏卡片底边位置：16 + 52 */
 </style>
-{{/* B2-7：外观预读（渲染前）——继承主站 sgx-ui cookie 的深浅色、调色板、字体大小、减弱动效；
-     没有 cookie 时与原来一样只看本地 sgx-theme-mode */}}
+{{/* 外观 + 语言预读（渲染前）——继承主站 sgx-ui cookie 的深浅色、调色板、强调色、字体大小、减弱动效和语言；
+     没有 cookie 时跟系统（日刻没有自己的开关） */}}
 <script>{{ (resources.Get "js/sgx/ui-inherit-run.js" | js.Build (dict "format" "iife" "minify" true "target" "es2018")).Content | safeJS }}</script>
 <script>
 /* 布局模式：<980 手机 / ≥980 DeX（沿用主站断点） */
@@ -41,34 +41,46 @@ __applyLayout();
 </head>
 <body class="text-m-on-surface font-sans antialiased">
 <div id="sgx-wallpaper" aria-hidden="true"></div>
-{{/* 顶栏（与主站 styrigx-space 通版 v5 同一套，2026-10-20）：两个圆 + 一个长条：
-   [九宫格圆（打开左侧导航抽屉）] — [长条：搜索图标 | 页名「日刻」| 快捷面板图标] — [头像圆（主站账号）]。
-   搜索图标聚焦底部搜索胶囊；快捷面板在顶栏下内嵌展开（partials/sgx-qp.html，topbar.js 开关）。
-   抽屉里主站的页面（首页、书签、设置）跳主站，日刻是当前项。 */}}
+{{/* 顶栏（沉浸式 app，2026-10-21，同博客 BlogTopNav）：左圆九宫格（导航抽屉）· 中间长条 = 分段滑块 · 右圆头像。
+   长条里只有三个页签：余响 · 拾录 · 百味（强调色滑块），没有搜索、没有快捷面板、没有页名；顶栏下面也没有大标题。
+   首页：页签是 role=tab 的按钮，daymark.js 切换面板（hash：无 / #trove / #flavors）。
+   其他页（404）：页签是回首页对应页签的链接，不高亮。
+   头像只展示（以后接账号体系），不可点击。外观和语言跟主站（sgx-ui cookie，见 ui-inherit-run.js）。 */}}
 {{ $main := cond $isEn "https://styrigx.com/en/" "https://styrigx.com/" }}
-{{ $setUrl := cond $isEn "https://styrigx.com/en/settings/" "https://styrigx.com/settings/" }}
-{{ $acctUrl := cond $isEn "https://styrigx.com/en/settings/account/" "https://styrigx.com/settings/account/" }}
-{{ $pageName := cond $isEn "Daymark" "日刻" }}
-{{ if eq .Kind "404" }}{{ $pageName = cond $isEn "Page not found" "页面不存在" }}{{ end }}
+{{ $home := cond $isEn "/en/" "/" }}
+{{ $tabs := slice
+  (dict "id" "echo" "zh" "余响" "en" "Echo" "hash" "")
+  (dict "id" "trove" "zh" "拾录" "en" "Trove" "hash" "#trove")
+  (dict "id" "flavors" "zh" "百味" "en" "Flavors" "hash" "#flavors")
+}}
 <header id="site-nav">
   <div class="sgx-topbar">
     <button type="button" class="sgx-tb-nav" aria-label="{{ if $isEn }}Navigation{{ else }}导航{{ end }}" aria-haspopup="dialog" aria-controls="sgx-drawer" aria-expanded="false">{{ partial "icon.html" "apps-grid" }}</button>
     <div class="sgx-tb-pill">
-      <button type="button" id="sgx-tb-search" class="sgx-tb-search sgx-tb-ic" aria-label="{{ if $isEn }}Search{{ else }}搜索{{ end }}">{{ partial "icon.html" "search" }}</button>
-      <span class="sgx-tb-title" data-qp-label="{{ if $isEn }}Quick panel{{ else }}快捷面板{{ end }}">{{ $pageName }}</span>
-      <button type="button" class="sgx-tb-quick sgx-tb-ic" aria-label="{{ if $isEn }}Quick panel{{ else }}快捷面板{{ end }}" aria-controls="sgx-qp" aria-expanded="false">{{ partial "icon.html" "sliders" }}</button>
+      {{ if .IsHome }}
+      <div class="sgx-seg" role="tablist" aria-label="{{ if $isEn }}Daymark sections{{ else }}日刻分区{{ end }}" data-dm-seg style="--seg-pos:0">
+        <span class="sgx-seg-ind" aria-hidden="true"></span>
+        {{ range $i, $t := $tabs }}
+        <button type="button" role="tab" class="sgx-seg-btn" id="dm-tab-{{ $t.id }}" aria-controls="dm-pane-{{ $t.id }}" aria-selected="{{ if eq $i 0 }}true{{ else }}false{{ end }}" tabindex="{{ if eq $i 0 }}0{{ else }}-1{{ end }}" data-dm-tab="{{ $t.id }}">{{ cond $isEn $t.en $t.zh }}</button>
+        {{ end }}
+      </div>
+      {{ else }}
+      <nav class="sgx-seg sgx-seg--none" aria-label="{{ if $isEn }}Daymark sections{{ else }}日刻分区{{ end }}">
+        <span class="sgx-seg-ind" aria-hidden="true"></span>
+        {{ range $tabs }}<a class="sgx-seg-btn" href="{{ $home }}{{ .hash }}">{{ cond $isEn .en .zh }}</a>{{ end }}
+      </nav>
+      {{ end }}
     </div>
-    {{/* 头像由主站统一管理，点开是主站账号页 */}}
-    <a class="sgx-tb-me" href="{{ $acctUrl }}" aria-label="{{ if $isEn }}Account{{ else }}账号{{ end }}"><img src="https://styrigx.com/avatar/192.webp" alt="" width="52" height="52" class="sgx-tb-avatar"></a>
+    <span class="sgx-tb-me" aria-hidden="true"><img src="https://styrigx.com/avatar/192.webp" alt="" width="52" height="52" class="sgx-tb-avatar"></span>
   </div>
 </header>
 
-{{/* 导航抽屉（主站同款 Gmail Android 式左侧抽屉，topbar.js 开关）：九宫格打开；点遮罩 / 系统返回 / Esc 关闭。
-   日刻是当前项（药丸高亮），点它只关抽屉；其余跳主站 / 博客（同一标签页）。 */}}
+{{/* 导航抽屉（同博客 / 主站的 Gmail 式左侧抽屉，topbar.js 开关）：只有四个应用 主页 / 书签 / 日刻 / 博客，
+   没有设置、没有底部区。日刻是当前项（强调色药丸），点它只关抽屉；其余跳主站 / 博客（同一标签页）。 */}}
 {{ $navItems := slice
-  (dict "id" "home" "icon" "nav-home" "zh" "首页" "en" "Home" "url" $main)
+  (dict "id" "home" "icon" "nav-home" "zh" "主页" "en" "Home" "url" $main)
   (dict "id" "bookmarks" "icon" "nav-bookmark" "zh" "书签" "en" "Bookmarks" "url" (cond $isEn "https://styrigx.com/en/bookmarks/" "https://styrigx.com/bookmarks/"))
-  (dict "id" "daymark" "icon" "nav-daymark" "zh" "日刻" "en" "Daymark" "url" (cond $isEn "/en/" "/"))
+  (dict "id" "daymark" "icon" "nav-daymark" "zh" "日刻" "en" "Daymark" "url" $home)
   (dict "id" "blog" "icon" "nav-blog" "zh" "博客" "en" "Blog" "url" (cond $isEn "https://blog.styrigx.com/en/" "https://blog.styrigx.com/"))
 }}
 <dialog id="sgx-drawer" class="sgx-drawer" aria-label="{{ if $isEn }}Navigation{{ else }}导航{{ end }}">
@@ -79,10 +91,6 @@ __applyLayout();
       <li><a class="sgx-drawer-item" href="{{ .url }}" data-nav="{{ .id }}"{{ if eq .id "daymark" }} aria-current="page"{{ end }}><span class="sgx-drawer-ic">{{ partial "icon.html" .icon }}</span><span class="sgx-drawer-label">{{ cond $isEn .en .zh }}</span></a></li>
       {{ end }}
     </ul>
-    <hr class="sgx-drawer-div">
-    <ul class="sgx-drawer-list">
-      <li><a class="sgx-drawer-item" href="{{ $setUrl }}" data-nav="settings"><span class="sgx-drawer-ic">{{ partial "icon.html" "nav-gear" }}</span><span class="sgx-drawer-label">{{ if $isEn }}Settings{{ else }}设置{{ end }}</span></a></li>
-    </ul>
   </nav>
 </dialog>
 {{ block "main" . }}{{ end }}
@@ -92,7 +100,7 @@ __applyLayout();
     <p class="sgx-powered">Powered by Styrigx UI</p>
   </div>
 </footer>
-{{/* 顶栏：导航抽屉、搜索图标、快捷面板 */}}
+{{/* 顶栏：导航抽屉 */}}
 <script src="{{ (resources.Get "js/topbar.js" | minify | fingerprint).RelPermalink }}"></script>
 {{/* SGX 锁屏同步：切回前台 / bfcache 恢复时向服务端确认会话（各页面 pagejs 之前加载） */}}
 <script src="{{ (resources.Get "js/sgx-lock-sync.js" | minify | fingerprint).RelPermalink }}"></script>

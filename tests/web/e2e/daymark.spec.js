@@ -1,76 +1,264 @@
 // 日刻首页（手机）：接口用 page.route 假数据，不碰线上。
-// - 访客：看到今日一句和公开句子，没有「记一句」
-// - 主人：「记一句」打开弹层，填写保存后新句子出现在列表最上面；点句子能编辑
-// - 标签筛选、搜索胶囊过滤
+// - 顶栏：九宫格 · 余响/拾录/百味 分段滑块 · 头像；没有搜索栏、快捷面板；抽屉只有四个应用
+// - 页签：默认余响，#trove / #flavors 直达，点页签改 hash；英文页 Echo / Trove / Flavors
+// - 余响：今日一句；再抽一句 → 回到今日；长按复制
+// - 拾录：全部句子新的在前；访客没有「记一句」；主人有，私密句子带锁
+// - 百味：自建专题在前（主人有「＋ 新建」），再是人物（每位作者一组）；点进分组、页内返回；主人上移 / 移出
+// - 记一句：预览、加译文、作者补全 + 最近作者、出处类型 + 名字补全、归入百味（含就地新建）、标签块、随手一笔、公开；
+//   保存 → 已拾录；编辑时删除要确认
 const { test, expect } = require('@playwright/test');
 
 const QUOTES = [
-  { id: 'aaaaaaaaaaa1', text: '世上本没有路，走的人多了，也便成了路。', trans: '', author: '鲁迅', source: '故乡', tags: ['人生'], visibility: 'public', created_at: 2, updated_at: 2 },
-  { id: 'aaaaaaaaaaa2', text: 'Stay hungry, stay foolish.', trans: '求知若饥，虚心若愚。', author: 'Steve Jobs', source: '', tags: ['English'], visibility: 'private', created_at: 1, updated_at: 1 },
+  { id: 'aaaaaaaaaaa1', text: '世上本没有路，走的人多了，也便成了路。', trans: '', author: '鲁迅', source: '故乡', source_type: 'book', tags: ['人生'], visibility: 'public', created_at: 4, updated_at: 4 },
+  { id: 'aaaaaaaaaaa2', text: 'Stay hungry, stay foolish.', trans: '求知若饥，虚心若愚。', author: 'Steve Jobs', source: '', source_type: '', tags: ['English'], visibility: 'private', created_at: 3, updated_at: 3 },
+  { id: 'aaaaaaaaaaa3', text: '人生如逆旅，我亦是行人。', trans: '', author: '苏轼', source: '临江仙', source_type: 'poetry', tags: ['人生'], visibility: 'public', created_at: 2, updated_at: 2 },
+  { id: 'aaaaaaaaaaa4', text: '回首向来萧瑟处，也无风雨也无晴。', trans: '', author: '苏轼', source: '定风波', source_type: 'poetry', tags: [], visibility: 'public', created_at: 1, updated_at: 1 },
 ];
+const COLS = [{ id: 'cccccccccc01', name: '晨读', intro: '早上读一遍', created_at: 1, sort: 0, quote_ids: ['aaaaaaaaaaa3', 'aaaaaaaaaaa1', 'aaaaaaaaaaa2'] }];
 
 async function mock(page, owner) {
-  const list = owner ? QUOTES.slice() : QUOTES.filter((q) => q.visibility === 'public');
+  const list = owner
+    ? QUOTES.map((q) => ({ ...q, note: '', collections: COLS[0].quote_ids.includes(q.id) ? ['cccccccccc01'] : [] }))
+    : QUOTES.filter((q) => q.visibility === 'public');
+  let cols = owner ? COLS.map((c) => ({ ...c, quote_ids: c.quote_ids.slice() })) : COLS.map((c) => ({ ...c, quote_ids: c.quote_ids.filter((id) => list.some((q) => q.id === id)) }));
+  const calls = [];
+  await page.route('**/avatar/**', (r) => r.fulfill({ status: 200, contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"/>' }));
   await page.route('**/api/session-check', (r) => r.fulfill({ json: { ok: true } }));
-  await page.route('**/api/today**', (r) => r.fulfill({ json: { ok: true, day: '2026-10-20', quote: QUOTES[0] } }));
+  await page.route('**/api/today**', (r) => r.fulfill({ json: { ok: true, day: '2026-10-20', quote: { ...QUOTES[0] } } }));
+  await page.route('**/api/collections**', async (r) => {
+    const req = r.request();
+    calls.push({ method: req.method(), url: req.url(), body: req.postDataJSON ? req.postDataJSON() : null });
+    if (req.method() === 'GET') return r.fulfill({ json: { ok: true, owner, collections: cols } });
+    if (req.method() === 'POST') {
+      const c = { id: 'cccccccccc09', name: req.postDataJSON().name, intro: req.postDataJSON().intro || '', created_at: 9, sort: 9, quote_ids: [] };
+      cols = cols.concat(c);
+      return r.fulfill({ status: 201, json: { ok: true, collection: c } });
+    }
+    if (req.method() === 'PUT') {
+      const id = new URL(req.url()).searchParams.get('id');
+      cols = cols.map((c) => (c.id === id ? { ...c, ...req.postDataJSON() } : c));
+      return r.fulfill({ json: { ok: true, collection: cols.find((c) => c.id === id) } });
+    }
+    return r.fulfill({ json: { ok: true } });
+  });
   await page.route('**/api/quotes**', async (r) => {
     const req = r.request();
     if (req.method() === 'GET') return r.fulfill({ json: { ok: true, owner, quotes: list } });
     const body = req.postDataJSON();
+    calls.push({ method: req.method(), url: req.url(), body });
     if (req.method() === 'POST') {
-      const q = { id: 'bbbbbbbbbbb1', trans: '', author: '', source: '', tags: [], visibility: 'public', created_at: 3, updated_at: 3, ...body };
+      const q = { id: 'bbbbbbbbbbb1', trans: '', author: '', source: '', source_type: '', tags: [], visibility: 'public', note: '', collections: [], created_at: 9, updated_at: 9, ...body };
       return r.fulfill({ status: 201, json: { ok: true, quote: q } });
     }
-    if (req.method() === 'PUT') return r.fulfill({ json: { ok: true, quote: { ...QUOTES[0], ...body } } });
+    if (req.method() === 'PUT') return r.fulfill({ json: { ok: true, quote: { ...list[0], ...body } } });
     return r.fulfill({ json: { ok: true } });
   });
+  return calls;
 }
 
-test('访客：今日一句 + 公开句子，没有记一句', async ({ page }) => {
+test('访客：顶栏三页签、没有搜索栏和快捷面板；抽屉四个应用；余响今日一句', async ({ page }) => {
   await mock(page, false);
   await page.goto('/');
-  await expect(page.locator('#dm-today-day')).toHaveText('10月20日 星期二');
-  await expect(page.locator('#dm-today-body')).toContainText('— 鲁迅《故乡》');
-  await expect(page.locator('#dm-list .dm-card')).toHaveCount(1);
-  await expect(page.locator('#dm-add')).toBeHidden();
+  await expect(page.locator('[data-dm-tab]')).toHaveText(['余响', '拾录', '百味']);
+  await expect(page.locator('#dm-tab-echo')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#bk-cap, #sgx-qp, .sgx-tb-search, .sgx-tb-quick, input[type="search"], [role="search"]')).toHaveCount(0);
+  await expect(page.locator('#dm-echo-day')).toHaveText('10月20日 星期二');
+  await expect(page.locator('#dm-echo-body')).toContainText('鲁迅 · 《故乡》');
+  await expect(page.locator('#dm-share')).toBeVisible();
+  await page.locator('.sgx-tb-nav').click();
+  await expect(page.locator('#sgx-drawer .sgx-drawer-item')).toHaveText(['主页', '书签', '日刻', '博客']);
+  await expect(page.locator('#sgx-drawer [data-nav="daymark"]')).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('#sgx-drawer')).not.toContainText('设置');
+  await expect(page.locator('#sgx-drawer hr')).toHaveCount(0);
 });
 
-test('主人：记一句 → 保存后出现在最上面；点句子进入编辑', async ({ page }) => {
-  await mock(page, true);
+test('页签：点了改 hash，#trove / #flavors 直达；英文页 Echo / Trove / Flavors', async ({ page }) => {
+  await mock(page, false);
   await page.goto('/');
-  await expect(page.locator('#dm-list .dm-card')).toHaveCount(2);
-  await expect(page.locator('.dm-priv')).toHaveCount(1);
-  await page.locator('#dm-add').click();
+  await page.locator('#dm-tab-trove').click();
+  await expect(page).toHaveURL(/#trove$/);
+  await expect(page.locator('#dm-pane-trove')).toBeVisible();
+  await expect(page.locator('#dm-pane-echo')).toBeHidden();
+  await page.locator('#dm-tab-flavors').click();
+  await expect(page).toHaveURL(/#flavors$/);
+  await page.locator('#dm-tab-echo').click();
+  await expect(page).toHaveURL(/\/$/);
+  await page.goto('/#flavors');
+  await expect(page.locator('#dm-tab-flavors')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#dm-pane-flavors')).toBeVisible();
+  await page.goto('/en/#trove');
+  await expect(page.locator('[data-dm-tab]')).toHaveText(['Echo', 'Trove', 'Flavors']);
+  await expect(page.locator('#dm-tab-trove')).toHaveAttribute('aria-selected', 'true');
+});
+
+test('余响：再抽一句 → 出现回到今日；回到今日恢复今日一句；长按复制', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await mock(page, false);
+  await page.goto('/');
+  await expect(page.locator('#dm-echo-body')).toContainText('世上本没有路');
+  await expect(page.locator('#dm-back-today')).toBeHidden();
+  await page.locator('#dm-draw').click();
+  await expect(page.locator('#dm-back-today')).toBeVisible();
+  await expect(page.locator('#dm-echo-body')).not.toContainText('世上本没有路');
+  await expect(page.locator('#dm-echo-day')).toContainText('拾于');
+  await page.locator('#dm-back-today').click();
+  await expect(page.locator('#dm-echo-body')).toContainText('世上本没有路');
+  await expect(page.locator('#dm-back-today')).toBeHidden();
+  const box = await page.locator('#dm-echo .dm-text').boundingBox();
+  await page.mouse.move(box.x + 20, box.y + 10);
+  await page.mouse.down();
+  await page.waitForTimeout(700);
+  await page.mouse.up();
+  await expect(page.locator('#bk-toast')).toHaveText('已复制');
+});
+
+test('拾录 · 访客：只有公开句子、没有记一句和锁', async ({ page }) => {
+  await mock(page, false);
+  await page.goto('/#trove');
+  await expect(page.locator('#dm-list .dm-card')).toHaveCount(3);
+  await expect(page.locator('#dm-fab')).toBeHidden();
+  await expect(page.locator('.dm-lock')).toHaveCount(0);
+});
+
+test('拾录 · 主人：新的在前、私密带锁、右下角记一句；点句子进入编辑，删除要确认', async ({ page }) => {
+  const calls = await mock(page, true);
+  await page.goto('/#trove');
+  await expect(page.locator('#dm-list .dm-card')).toHaveCount(4);
+  await expect(page.locator('#dm-list .dm-card').first()).toContainText('世上本没有路');
+  await expect(page.locator('#dm-list .dm-lock')).toHaveCount(1);
+  await expect(page.locator('#dm-fab')).toBeVisible();
+  await page.locator('#dm-tab-echo').click();
+  await expect(page.locator('#dm-fab')).toBeHidden();
+  await page.locator('#dm-tab-trove').click();
+  await page.locator('#dm-list .dm-card').first().click();
+  await expect(page.locator('#edit-title')).toHaveText('编辑这一句');
+  await expect(page.locator('#f-text')).toHaveValue(QUOTES[0].text);
+  await expect(page.locator('#f-stype [data-st="book"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#f-cols [data-col="cccccccccc01"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#f-tagchips .dm-tagchip')).toHaveText(['#人生×']);
+  await page.locator('#edit-del').click();
+  await expect(page.locator('#confirm-wrap')).toHaveClass(/open/);
+  await page.locator('#confirm-cancel').click();
+  await expect(page.locator('#edit-wrap')).toHaveClass(/open/);
+  await page.locator('#edit-del').click();
+  await page.locator('#confirm-ok').click();
+  await expect(page.locator('#edit-wrap')).not.toHaveClass(/open/);
+  await expect(page.locator('#dm-list .dm-card')).toHaveCount(3);
+  expect(calls.some((c) => c.method === 'DELETE' && c.url.includes('id=aaaaaaaaaaa1'))).toBe(true);
+});
+
+test('记一句：预览、加译文、作者补全 + 最近作者、出处类型、归入百味（含新建）、标签块、随手一笔 → 已拾录', async ({ page }) => {
+  const calls = await mock(page, true);
+  await page.goto('/#trove');
+  await page.locator('#dm-fab').click();
   await expect(page.locator('#edit-wrap')).toHaveClass(/open/);
   await expect(page.locator('#edit-title')).toHaveText('记一句');
+  await expect(page.locator('#edit-del')).toBeHidden();
   await page.locator('#edit-save').click();
   await expect(page.locator('#edit-err')).toBeVisible();
-  await page.locator('#f-text').fill('今天也要好好吃饭。');
-  await page.locator('#f-tags').fill('生活, #日常');
+
+  await page.locator('#f-text').fill('人生如逆旅，我亦是行人。');
+  await expect(page.locator('#ed-preview .dm-text')).toHaveText('人生如逆旅，我亦是行人。');
+  await expect(page.locator('#f-trans-wrap')).toBeHidden();
+  await page.locator('#f-trans-toggle').click();
+  await page.locator('#f-trans').fill('Life is a journey.');
+  await expect(page.locator('#ed-preview .dm-trans')).toHaveText('Life is a journey.');
+
+  await expect(page.locator('#f-author-recent [data-author]').first()).toHaveText('鲁迅');
+  await page.locator('#f-author').fill('苏');
+  await expect(page.locator('#f-author-ac .dm-ac-item')).toHaveText(['苏轼']);
+  await page.locator('#f-author-ac .dm-ac-item').click();
+  await expect(page.locator('#f-author')).toHaveValue('苏轼');
+
+  await page.locator('#f-stype [data-st="poetry"]').click();
+  await expect(page.locator('#f-stype [data-st="poetry"]')).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('#f-source').fill('临');
+  await expect(page.locator('#f-source-ac .dm-ac-item')).toHaveText(['临江仙']);
+  await page.locator('#f-source-ac .dm-ac-item').click();
+  await expect(page.locator('#ed-preview .dm-attr')).toHaveText('苏轼 · 《临江仙》');
+
+  await page.locator('#f-cols [data-col="cccccccccc01"]').click();
+  await page.locator('#f-col-new').click();
+  await page.locator('#f-col-name').fill('夜读');
+  await page.locator('#f-col-add').click();
+  await expect(page.locator('#f-cols [data-col="cccccccccc09"]')).toHaveAttribute('aria-pressed', 'true');
+  expect(calls.some((c) => c.method === 'POST' && c.url.endsWith('/api/collections') && c.body.name === '夜读')).toBe(true);
+
+  await page.locator('#f-tag-input').fill('旅行');
+  await page.locator('#f-tag-input').press('Enter');
+  await page.locator('#f-tag-input').fill('#宋词,');
+  await expect(page.locator('#f-tagchips .dm-tagchip')).toHaveCount(2);
+  await page.locator('#f-tag-sugg [data-addtag="人生"]').click();
+  await expect(page.locator('#f-tagchips .dm-tagchip')).toHaveCount(3);
+  await page.locator('#f-tagchips [data-untag="1"]').click();
+  await expect(page.locator('#f-tagchips .dm-tagchip')).toHaveCount(2);
+
+  await page.locator('#f-note').fill('在旧书店读到');
+  await page.locator('#f-public').evaluate((el) => { el.checked = false; });
   const [req] = await Promise.all([
     page.waitForRequest((r) => r.url().endsWith('/api/quotes') && r.method() === 'POST'),
     page.locator('#edit-save').click(),
   ]);
-  expect(req.postDataJSON().tags).toEqual(['生活', '日常']);
+  const b = req.postDataJSON();
+  expect(b).toMatchObject({ text: '人生如逆旅，我亦是行人。', trans: 'Life is a journey.', author: '苏轼', source: '临江仙', source_type: 'poetry', note: '在旧书店读到', visibility: 'private' });
+  expect(b.tags).toEqual(['旅行', '人生']);
+  expect(b.collections).toEqual(['cccccccccc01', 'cccccccccc09']);
+  await expect(page.locator('#bk-toast')).toHaveText('已拾录');
   await expect(page.locator('#edit-wrap')).not.toHaveClass(/open/);
-  await expect(page.locator('#dm-list .dm-card').first()).toContainText('今天也要好好吃饭。');
-  await page.locator('#dm-list .dm-card').nth(1).click();
-  await expect(page.locator('#edit-title')).toHaveText('编辑这一句');
-  await expect(page.locator('#f-text')).toHaveValue(QUOTES[0].text);
-  await expect(page.locator('#edit-del')).toBeVisible();
-  await page.screenshot({ path: 'test-results/daymark-edit.png' });
+  await expect(page.locator('#dm-list .dm-card').first()).toContainText('人生如逆旅');
 });
 
-test('标签筛选 + 搜索', async ({ page }) => {
-  await mock(page, true);
-  await page.goto('/');
-  await expect(page.locator('#dm-list .dm-card')).toHaveCount(2);
-  await page.screenshot({ path: 'test-results/daymark-home.png', fullPage: true });
-  await page.locator('#dm-tags [data-tag="English"]').click();
-  await expect(page.locator('#dm-list .dm-card')).toHaveCount(1);
-  await page.locator('#dm-tags [data-tag=""]').click();
-  await page.evaluate(() => window.__bkCapSearchProvider('鲁迅'));
-  await expect(page.locator('#dm-list .dm-card')).toHaveCount(1);
-  await page.evaluate(() => window.__bkCapSearchProvider('没有这句'));
-  await expect(page.locator('#dm-no-results')).toBeVisible();
+test('百味 · 主人：专题在前带新建、人物每位作者一组；进分组页内返回；上移和移出走 PUT', async ({ page }) => {
+  const calls = await mock(page, true);
+  await page.goto('/#flavors');
+  await expect(page.locator('#dm-cols .dm-fcard')).toHaveCount(2);
+  await expect(page.locator('#dm-cols .dm-fcard').first()).toContainText('晨读');
+  await expect(page.locator('#dm-cols .dm-fcard').first()).toContainText('3 句');
+  await expect(page.locator('#dm-col-new')).toBeVisible();
+  await expect(page.locator('#dm-authors .dm-fcard')).toHaveCount(3);
+  await expect(page.locator('#dm-authors .dm-fcard').first()).toContainText('苏轼');
+  await expect(page.locator('#dm-authors .dm-fcard').first()).toContainText('2 句');
+  await expect(page.locator('#dm-pane-flavors')).not.toContainText('出处');
+  await expect(page.locator('#dm-pane-flavors')).not.toContainText('标签');
+
+  await page.locator('#dm-cols [data-key="cccccccccc01"]').click();
+  await expect(page).toHaveURL(/#flavors\/c\/cccccccccc01$/);
+  await expect(page.locator('#dm-g-title')).toHaveText('晨读');
+  await expect(page.locator('#dm-g-list .dm-card')).toHaveCount(3);
+  await expect(page.locator('#dm-g-list .dm-card').first()).toContainText('人生如逆旅');
+  await page.locator('#dm-g-edit').click();
+  await page.locator('#dm-g-list [data-move="-1"][data-i="1"]').click();
+  await expect(page.locator('#dm-g-list .dm-card').first()).toContainText('世上本没有路');
+  let put = calls.filter((c) => c.method === 'PUT' && c.url.includes('/api/collections')).pop();
+  expect(put.body.quote_ids).toEqual(['aaaaaaaaaaa1', 'aaaaaaaaaaa3', 'aaaaaaaaaaa2']);
+  await page.locator('#dm-g-list [data-remove="2"]').click();
+  await expect(page.locator('#dm-g-list .dm-card')).toHaveCount(2);
+  put = calls.filter((c) => c.method === 'PUT' && c.url.includes('/api/collections')).pop();
+  expect(put.body.quote_ids).toEqual(['aaaaaaaaaaa1', 'aaaaaaaaaaa3']);
+  await page.locator('#dm-fl-back').click();
+  await expect(page).toHaveURL(/#flavors$/);
+  await expect(page.locator('#dm-fl-home')).toBeVisible();
+
+  await page.locator('#dm-authors [data-key="苏轼"]').click();
+  await expect(page.locator('#dm-g-title')).toHaveText('苏轼');
+  await expect(page.locator('#dm-g-list .dm-card')).toHaveCount(2);
+  await expect(page.locator('#dm-g-tools')).toBeHidden();
+
+  await page.locator('#dm-fl-back').click();
+  await page.locator('#dm-col-new').click();
+  await page.locator('#c-name').fill('电影台词');
+  await page.locator('#c-intro').fill('看片时记下的');
+  await page.locator('#col-save').click();
+  await expect(page.locator('#dm-g-title')).toHaveText('电影台词');
+  await expect(page.locator('#dm-g-intro')).toHaveText('看片时记下的');
+});
+
+test('百味 · 访客：没有新建；专题里只显示看得到的句子', async ({ page }) => {
+  await mock(page, false);
+  await page.goto('/#flavors/c/cccccccccc01');
+  await expect(page.locator('#dm-g-title')).toHaveText('晨读');
+  await expect(page.locator('#dm-g-list .dm-card')).toHaveCount(2);
+  await expect(page.locator('#dm-g-tools')).toBeHidden();
+  await page.locator('#dm-fl-back').click();
+  await expect(page.locator('#dm-col-new')).toHaveCount(0);
 });

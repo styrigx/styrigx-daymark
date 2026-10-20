@@ -3,6 +3,8 @@
 // - /api/today 公开（CORS 只给 styrigx.com），其余先问网关；网关出错 → 500 不是 401
 // - 读：visitor 只看公开，owner 看全部；写：非同源 403、visitor 403、校验、增改删
 // - 今日一句：只从公开里挑，同一天固定，按北京时间换天
+// - 三页签：出处类型、随手一笔（访客和 /api/today 永不返回）、百味专题的增删改、归属与排序、访客只见公开
+// - 迁移 0001 + 0002 依次跑在 SQLite 上，接口照常工作
 // - wrangler.toml：不开 workers.dev，只挂 daymark.styrigx.com/api/*，服务绑定网关，不持钥匙
 // SQL 用 node:sqlite 真跑（CI 用 Node 22）。
 // 运行：node --test tests/workers/core.test.mjs
@@ -20,8 +22,7 @@ const { API_ROUTES } = await import(W + '/src/routes.js');
 const Q = await import(W + '/src/api/_quotes.js');
 
 /** node:sqlite 包成 D1 的样子 */
-function makeD1() {
-  const db = new DatabaseSync(':memory:');
+function makeD1(db = new DatabaseSync(':memory:')) {
   const stmt = (sql, args = []) => ({
     bind: (...a) => stmt(sql, a),
     run: async () => ({ meta: { changes: Number(db.prepare(sql).run(...args).changes) } }),
@@ -156,4 +157,209 @@ test('wrangler.toml：不开 workers.dev，只挂 daymark 的 /api/*，D1 + 网�
   assert.match(t, /^database_id = "[0-9a-f-]{36}"$/m);
   assert.match(t, /^service = "styrigx-auth-gateway"$/m);
   assert.doesNotMatch(t, /SGX_|r2_buckets/);
+});
+
+/* ================= 三页签：出处类型、随手一笔、百味专题 ================= */
+const addC = async (db, c) => (await (await call('/api/collections', { role: 'owner', db, method: 'POST', body: c })).json()).collection;
+const listC = async (db, role) => (await (await call('/api/collections', { role, db })).json());
+
+test('出处类型 + 随手一笔：主人拿得到；类型不合法 400', async () => {
+  const db = makeD1();
+  const q = await add(db, { text: '床前明月光', author: '李白', source: '静夜思', source_type: 'poetry', note: '小时候背的第一首' });
+  assert.equal(q.source_type, 'poetry');
+  assert.equal(q.note, '小时候背的第一首');
+  assert.deepEqual(q.collections, []);
+  assert.equal((await call('/api/quotes', { role: 'owner', db, method: 'POST', body: { text: 'x', source_type: 'tv' } })).status, 400);
+  const u = (await (await call('/api/quotes?id=' + q.id, { role: 'owner', db, method: 'PUT', body: { source_type: '', note: '改了' } })).json()).quote;
+  assert.equal(u.source_type, '');
+  assert.equal(u.note, '改了');
+  const o = await (await call('/api/quotes', { role: 'owner', db })).json();
+  assert.equal(o.quotes[0].note, '改了');
+});
+
+test('随手一笔不外泄：访客列表、访客专题、/api/today 都没有 note 键，也没有内容', async () => {
+  const db = makeD1();
+  const SECRET = '只给自己看的悄悄话';
+  const q = await add(db, { text: '公开的一句', note: SECRET });
+  const c = await addC(db, { name: '晨读' });
+  await call('/api/collections?id=' + c.id, { role: 'owner', db, method: 'PUT', body: { quote_ids: [q.id] } });
+  const vr = await call('/api/quotes', { role: 'visitor', db });
+  const vt = await vr.text();
+  assert.ok(!vt.includes(SECRET));
+  const v = JSON.parse(vt);
+  assert.equal(v.quotes.length, 1);
+  assert.ok(!('note' in v.quotes[0]));
+  assert.ok(!('collections' in v.quotes[0]));
+  const ct = await (await call('/api/collections', { role: 'visitor', db })).text();
+  assert.ok(!ct.includes(SECRET));
+  for (let d = 1; d <= 3; d++) {
+    const t = await (await call('/api/today?d=2026-12-0' + d, { db })).text();
+    assert.ok(!t.includes(SECRET));
+    assert.ok(!('note' in JSON.parse(t).quote));
+    assert.ok(!('visibility' in JSON.parse(t).quote));
+  }
+});
+
+test('百味专题：新建校验、写操作只给主人 + 同源', async () => {
+  const db = makeD1();
+  assert.equal((await call('/api/collections', { role: 'owner', db, method: 'POST', body: { name: ' ' } })).status, 400);
+  assert.equal((await call('/api/collections', { role: 'visitor', db, method: 'POST', body: { name: 'x' } })).status, 403);
+  assert.equal((await call('/api/collections', { role: 'owner', db, method: 'POST', body: { name: 'x' }, origin: 'https://evil.com' })).status, 403);
+  assert.equal((await call('/api/collections', { db, method: 'POST', body: { name: 'x' } })).status, 401);
+  assert.equal((await call('/api/collections', { db })).status, 401);
+  const a = await addC(db, { name: '  晨读  ', intro: '早上读的' });
+  const b = await addC(db, { name: '电影台词' });
+  assert.equal(a.name, '晨读');
+  assert.equal(a.intro, '早上读的');
+  assert.ok(b.sort > a.sort);
+  assert.deepEqual(a.quote_ids, []);
+  const o = await listC(db, 'owner');
+  assert.equal(o.owner, true);
+  assert.deepEqual(o.collections.map((c) => c.name), ['晨读', '电影台词']);
+});
+
+test('百味专题：归入（句子的 collections）、排序和移出（专题的 quote_ids）、删句子 / 删专题都清掉归属', async () => {
+  const db = makeD1();
+  const c = await addC(db, { name: '晨读' });
+  const d = await addC(db, { name: '夜读' });
+  const q1 = await add(db, { text: '一', collections: [c.id] });
+  const q2 = await add(db, { text: '二', collections: [c.id, d.id, '000000000000'] });
+  const q3 = await add(db, { text: '三' });
+  assert.deepEqual(q2.collections, [c.id, d.id]);
+  assert.equal((await call('/api/quotes', { role: 'owner', db, method: 'POST', body: { text: 'x', collections: ['bad'] } })).status, 400);
+  let o = await listC(db, 'owner');
+  assert.deepEqual(o.collections[0].quote_ids, [q1.id, q2.id]);
+  /* 编辑句子时加入：排到末尾 */
+  const u3 = (await (await call('/api/quotes?id=' + q3.id, { role: 'owner', db, method: 'PUT', body: { collections: [c.id] } })).json()).quote;
+  assert.deepEqual(u3.collections, [c.id]);
+  o = await listC(db, 'owner');
+  assert.deepEqual(o.collections[0].quote_ids, [q1.id, q2.id, q3.id]);
+  /* 排序 + 移出 */
+  const r = await call('/api/collections?id=' + c.id, { role: 'owner', db, method: 'PUT', body: { quote_ids: [q3.id, q1.id], name: '晨读·改' } });
+  const cc = (await r.json()).collection;
+  assert.deepEqual(cc.quote_ids, [q3.id, q1.id]);
+  assert.equal(cc.name, '晨读·改');
+  /* 句子自己的归属跟着变 */
+  const all = (await (await call('/api/quotes', { role: 'owner', db })).json()).quotes;
+  assert.deepEqual(all.find((q) => q.id === q2.id).collections, [d.id]);
+  /* 句子里只改正文，归属不动 */
+  const u1 = (await (await call('/api/quotes?id=' + q1.id, { role: 'owner', db, method: 'PUT', body: { text: '一·改' } })).json()).quote;
+  assert.deepEqual(u1.collections, [c.id]);
+  /* 删句子 → 从专题里消失 */
+  await call('/api/quotes?id=' + q3.id, { role: 'owner', db, method: 'DELETE' });
+  o = await listC(db, 'owner');
+  assert.deepEqual(o.collections[0].quote_ids, [q1.id]);
+  /* 坏参数 / 不存在 */
+  assert.equal((await call('/api/collections?id=' + c.id, { role: 'owner', db, method: 'PUT', body: {} })).status, 400);
+  assert.equal((await call('/api/collections?id=' + c.id, { role: 'owner', db, method: 'PUT', body: { quote_ids: 'x' } })).status, 400);
+  assert.equal((await call('/api/collections?id=000000000000', { role: 'owner', db, method: 'PUT', body: { name: 'y' } })).status, 404);
+  assert.equal((await call('/api/collections?id=zz', { role: 'owner', db, method: 'DELETE' })).status, 400);
+  /* 删专题：句子还在，归属没了 */
+  assert.equal((await call('/api/collections?id=' + c.id, { role: 'visitor', db, method: 'DELETE' })).status, 403);
+  assert.equal((await call('/api/collections?id=' + c.id, { role: 'owner', db, method: 'DELETE' })).status, 200);
+  assert.equal((await call('/api/collections?id=' + c.id, { role: 'owner', db, method: 'DELETE' })).status, 404);
+  const left = (await (await call('/api/quotes', { role: 'owner', db })).json()).quotes;
+  assert.equal(left.length, 2);
+  assert.deepEqual(left.find((q) => q.id === q1.id).collections, []);
+});
+
+test('百味专题 · 访客：只含公开句子，空专题不返回', async () => {
+  const db = makeD1();
+  const pub = await add(db, { text: '公开' });
+  const pri = await add(db, { text: '私密', visibility: 'private' });
+  const c = await addC(db, { name: '混合' });
+  const e = await addC(db, { name: '只有私密' });
+  await addC(db, { name: '空的' });
+  await call('/api/collections?id=' + c.id, { role: 'owner', db, method: 'PUT', body: { quote_ids: [pri.id, pub.id] } });
+  await call('/api/collections?id=' + e.id, { role: 'owner', db, method: 'PUT', body: { quote_ids: [pri.id] } });
+  const v = await listC(db, 'visitor');
+  assert.equal(v.owner, false);
+  assert.deepEqual(v.collections.map((x) => x.name), ['混合']);
+  assert.deepEqual(v.collections[0].quote_ids, [pub.id]);
+  const o = await listC(db, 'owner');
+  assert.equal(o.collections.length, 3);
+  assert.deepEqual(o.collections[0].quote_ids, [pri.id, pub.id]);
+});
+
+test('迁移：0001 + 0002 依次跑完，老数据保留、新字段有默认值、接口可用', async () => {
+  const raw = new DatabaseSync(':memory:');
+  raw.exec(readFileSync(W + '/migrations/0001_init.sql', 'utf8'));
+  raw.prepare("INSERT INTO quotes (id, text, created_at) VALUES ('aaaaaaaaaaaa', '老句子', 1)").run();
+  raw.exec(readFileSync(W + '/migrations/0002_three_tabs.sql', 'utf8'));
+  const db = makeD1(raw);
+  const o = await (await call('/api/quotes', { role: 'owner', db })).json();
+  assert.equal(o.quotes[0].text, '老句子');
+  assert.equal(o.quotes[0].source_type, '');
+  assert.equal(o.quotes[0].note, '');
+  const c = await addC(db, { name: '旧句' });
+  assert.equal((await call('/api/collections?id=' + c.id, { role: 'owner', db, method: 'PUT', body: { quote_ids: ['aaaaaaaaaaaa'] } })).status, 200);
+  /* 迁移里的列与兜底建表一致 */
+  const cols = (t, d) => d.prepare('PRAGMA table_info(' + t + ')').all().map((r) => r.name).sort();
+  const fresh = makeD1();
+  await call('/api/quotes', { role: 'owner', db: fresh });
+  for (const t of ['quotes', 'collections', 'collection_quotes']) assert.deepEqual(cols(t, raw), cols(t, fresh.raw), t);
+});
+
+/* ================= 种子迁移 0003_seed_quotes ================= */
+test('种子迁移：全新库上连跑两次都不报错，得到 63 句 + 2 个专题，归属按 JSON 顺序', async () => {
+  const raw = new DatabaseSync(':memory:');
+  const seed = readFileSync(W + '/migrations/0003_seed_quotes.sql', 'utf8');
+  raw.exec(readFileSync(W + '/migrations/0001_init.sql', 'utf8'));
+  raw.exec(readFileSync(W + '/migrations/0002_three_tabs.sql', 'utf8'));
+  raw.exec(seed);
+  raw.exec(seed);
+  const n = (sql) => Number(raw.prepare(sql).get().n);
+  assert.equal(n('SELECT COUNT(*) AS n FROM quotes'), 63);
+  assert.equal(n('SELECT COUNT(*) AS n FROM collections'), 2);
+  assert.equal(n('SELECT COUNT(*) AS n FROM collection_quotes'), 63);
+  const cols = raw.prepare('SELECT name, intro, sort FROM collections ORDER BY sort').all().map((r) => ({ ...r }));
+  assert.deepEqual(cols, [
+    { name: '尼采', intro: '尼采原著摘句，英文为公版译本', sort: 0 },
+    { name: '了不起的盖茨比', intro: '菲茨杰拉德原文摘句', sort: 1 },
+  ]);
+  /* 通过接口读：主人看到两专题；访客看到的都是公开句子；note 为空、类型是 book */
+  const db = makeD1(raw);
+  const o = await (await call('/api/collections', { role: 'owner', db })).json();
+  assert.equal(o.collections[0].quote_ids.length + o.collections[1].quote_ids.length, 63);
+  const qs = (await (await call('/api/quotes', { role: 'visitor', db })).json()).quotes;
+  assert.equal(qs.length, 63);
+  assert.ok(qs.every((q) => q.source_type === 'book' && !('note' in q)));
+  /* 拾录新的在前 = JSON 顺序；专题里也是 JSON 顺序 */
+  const byId = Object.fromEntries(qs.map((q) => [q.id, q]));
+  const first = byId[o.collections[0].quote_ids[0]];
+  assert.equal(first.text, qs[0].text);
+  assert.equal(first.author, '尼采');
+  const gatsby = o.collections[1].quote_ids.map((id) => byId[id].text);
+  assert.match(gatsby[gatsby.length - 1], /逆流而上/);
+});
+
+test('种子迁移：只增不删，已有的同正文句子不重复、专题已存在就并进去', () => {
+  const raw = new DatabaseSync(':memory:');
+  const seed = readFileSync(W + '/migrations/0003_seed_quotes.sql', 'utf8');
+  for (const line of seed.split('\n').filter((l) => l && !l.startsWith('--'))) {
+    assert.match(line, /^INSERT /);
+    assert.doesNotMatch(line, /\b(DELETE|UPDATE|DROP|REPLACE INTO)\b/);
+  }
+  raw.exec(readFileSync(W + '/migrations/0001_init.sql', 'utf8'));
+  raw.exec(readFileSync(W + '/migrations/0002_three_tabs.sql', 'utf8'));
+  const sample = seed.match(/SELECT '[0-9a-f]{12}', '((?:[^']|'')*)'/)[1].replace(/''/g, "'");
+  raw.prepare("INSERT INTO quotes (id, text, note, created_at) VALUES ('ffffffffffff', ?, '我的笔记', 1)").run(sample);
+  raw.prepare("INSERT INTO quotes (id, text, created_at) VALUES ('eeeeeeeeeeee', '用户自己的句子', 2)").run();
+  raw.prepare("INSERT INTO collections (id, name, intro, created_at, sort) VALUES ('dddddddddddd', '尼采', '我自己的简介', 1, 0)").run();
+  raw.exec(seed);
+  const n = (sql) => Number(raw.prepare(sql).get().n);
+  assert.equal(n('SELECT COUNT(*) AS n FROM quotes'), 64);
+  assert.equal(n('SELECT COUNT(*) AS n FROM quotes WHERE text = ' + "'" + sample.replace(/'/g, "''") + "'"), 1);
+  assert.equal(raw.prepare("SELECT note FROM quotes WHERE id = 'ffffffffffff'").get().note, '我的笔记');
+  assert.equal(n("SELECT COUNT(*) AS n FROM collections WHERE name = '尼采'"), 1);
+  assert.equal(raw.prepare("SELECT intro FROM collections WHERE name = '尼采'").get().intro, '我自己的简介');
+  assert.equal(n("SELECT COUNT(*) AS n FROM collection_quotes WHERE quote_id = 'ffffffffffff' AND collection_id = 'dddddddddddd'"), 1);
+  assert.equal(n("SELECT COUNT(*) AS n FROM quotes WHERE id = 'eeeeeeeeeeee'"), 1);
+});
+
+test('种子迁移与生成脚本一致（设了 DAYMARK_SEED_JSON=<quotes.json> 时检查；种子原文不进仓库）', async (t) => {
+  const SEED = process.env.DAYMARK_SEED_JSON;
+  if (!SEED) return t.skip('没设 DAYMARK_SEED_JSON');
+  const { seedSql } = await import(REPO + '/scripts/gen-seed-sql.mjs');
+  assert.equal(seedSql(JSON.parse(readFileSync(SEED, 'utf8'))), readFileSync(W + '/migrations/0003_seed_quotes.sql', 'utf8'));
 });

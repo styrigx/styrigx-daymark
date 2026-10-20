@@ -2,7 +2,7 @@
  * 继承主站外观（sgx-ui cookie）。
  */
 import assert from 'node:assert/strict';
-import { readUiCookie, resolveAppearance } from '../../web/assets/js/sgx/lib/ui-inherit.js';
+import { readUiCookie, resolveAppearance, langTarget, onColor } from '../../web/assets/js/sgx/lib/ui-inherit.js';
 
 const enc = (o) => Buffer.from(JSON.stringify(o), 'utf8').toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
@@ -31,5 +31,22 @@ assert.equal(resolveAppearance(got, { mode: 'light', at: 2000 }, false).pal, 'ma
 /* 5. 非法值兜底 */
 a = resolveAppearance({ mode: 'neon', pal: '<x>', fs: 'huge', rm: '1' }, { mode: null, at: 0 }, false);
 assert.deepEqual(a, { mode: 'system', dark: false, pal: 'lake', fs: 'standard', rm: false });
+
+/* 6. theme 是 mode 的别名；accent：色板 id 或 #rrggbb，其他丢掉 */
+assert.equal(resolveAppearance({ theme: 'dark' }, { mode: null, at: 0 }, false).dark, true);
+assert.equal(resolveAppearance({ mode: 'light', theme: 'dark' }, { mode: null, at: 0 }, true).dark, false);
+assert.equal(resolveAppearance({ accent: 'rose' }, { mode: null, at: 0 }, false).accent, 'rose');
+assert.equal(resolveAppearance({ accent: '#AA3355' }, { mode: null, at: 0 }, false).accent, '#aa3355');
+assert.equal(resolveAppearance({ accent: 'url(x)' }, { mode: null, at: 0 }, false).accent, undefined);
+assert.equal(onColor('#ffffff'), '#161b20');
+assert.equal(onColor('#2f5f86'), '#ffffff');
+
+/* 7. 语言跟主站：只在不同的时候跳，保留 #页签 */
+assert.equal(langTarget({ lang: 'en' }, { pathname: '/', hash: '#trove' }, 'zh'), '/en/#trove');
+assert.equal(langTarget({ lang: 'zh' }, { pathname: '/en/', hash: '#flavors' }, 'en'), '/#flavors');
+assert.equal(langTarget({ lang: 'zh' }, { pathname: '/en/404.html' }, 'en'), '/404.html');
+assert.equal(langTarget({ lang: 'zh' }, { pathname: '/' }, 'zh'), '');
+assert.equal(langTarget({}, { pathname: '/' }, 'zh'), '');
+assert.equal(langTarget(null, { pathname: '/en/' }, 'en'), '');
 
 console.log('ui-inherit: ok');
