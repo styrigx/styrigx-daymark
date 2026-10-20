@@ -122,7 +122,6 @@ doc.addEventListener('keydown', function(e){
   if (e.key !== 'Escape') return;
   var open = doc.querySelectorAll('.bk-overlay.open');
   if (open.length) { closeOverlay(open[open.length - 1].id); return; }
-  var m = $('#bk-more-menu'); if (m) m.classList.add('hidden');
 });
 
 /* ---------- 今日一句 ---------- */
@@ -228,43 +227,6 @@ $('#confirm-ok').addEventListener('click', function(){
   }).catch(function(e){ if (!e.sgxLocked) toast(T.failed); });
 });
 $('#dm-add').addEventListener('click', function(){ openEdit(null); });
-
-/* ---------- ⋮ 菜单 + 主题 ---------- */
-function applyTheme(mode){
-  try { localStorage.setItem('sgx-theme-mode', mode); localStorage.setItem('sgx-theme-at', String(Date.now())); } catch (e) {}
-  if (G.__sgxApplyUi) G.__sgxApplyUi();
-  else doc.documentElement.classList.toggle('dark', mode === 'dark' || (mode === 'system' && G.matchMedia('(prefers-color-scheme: dark)').matches));
-  markTheme(mode);
-}
-function markTheme(mode){
-  doc.querySelectorAll('.bk-theme-opt').forEach(function(b){
-    var on = b.dataset.theme === mode;
-    var c = b.querySelector('.bk-theme-check'); if (c) c.classList.toggle('hidden', !on);
-  });
-}
-doc.querySelectorAll('.bk-theme-opt').forEach(function(b){ b.addEventListener('click', function(){ applyTheme(b.dataset.theme); }); });
-var menu = $('#bk-more-menu'), menuBtn = $('#bk-menu-btn');
-function renderMenu(){
-  var items = owner ? [['add', T.add]] : [];
-  items.push(['settings', isEn ? 'Settings' : '设置']);
-  menu.innerHTML = items.map(function(it){ return '<button type="button" class="bk-menu-item" role="menuitem" data-more="' + it[0] + '"><span>' + esc(it[1]) + '</span></button>'; }).join('');
-  menu.querySelectorAll('[data-more]').forEach(function(b){
-    b.addEventListener('click', function(){
-      menu.classList.add('hidden');
-      if (b.dataset.more === 'add') openEdit(null);
-      if (b.dataset.more === 'settings') { markTheme(doc.documentElement.getAttribute('data-theme-mode') || 'system'); openOverlay('settings-wrap'); }
-    });
-  });
-}
-if (menu && menuBtn) {
-  menuBtn.addEventListener('click', function(e){
-    e.stopPropagation();
-    var willOpen = menu.classList.contains('hidden');
-    menu.classList.add('hidden');
-    if (willOpen) { renderMenu(); menu.classList.remove('hidden'); if (G.sgxAnchorMenu) G.sgxAnchorMenu(menu, menuBtn); }
-  });
-  doc.addEventListener('click', function(e){ if (!e.target.closest('#bk-more-menu') && !e.target.closest('#bk-menu-btn')) menu.classList.add('hidden'); });
-}
 
 /* ---------- 搜索胶囊回调（capsule-kb.js 调用） ---------- */
 G.__bkCapSearchProvider = function(q){ query = String(q || '').trim(); renderList(); };

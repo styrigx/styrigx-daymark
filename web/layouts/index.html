@@ -1,10 +1,10 @@
 {{ define "main" }}
 {{ $isEn := or (eq .Lang "en") (hasPrefix .RelPermalink "/en/") }}
-{{/* 日刻首页：大标题 + 今日一句卡 + 标签筛选条 + 句子列表 + 底部搜索胶囊。
+{{/* 日刻首页：（快捷面板）+ 今日一句卡 + 标签筛选条 + 句子列表 + 底部搜索胶囊。
    主人（owner）：今日卡下有「记一句」，点句子卡打开编辑弹层；访客只读、只看公开句子。
    数据全走 daymark.styrigx.com/api/*（接口 Worker，见 workers/）。 */}}
 <main id="dm-main" class="w-full mx-auto pb-6" style="max-width:860px;padding-left:16px;padding-right:16px">
-  {{ partial "subpage-head.html" (dict "title" (cond $isEn "Daymark" "日刻") "isEn" $isEn) }}
+  {{ partial "sgx-qp.html" (dict "isEn" $isEn) }}
 
   {{/* ===== 今日一句 ===== */}}
   <section id="dm-today" class="dm-today mb-6" aria-label="{{ if $isEn }}Today{{ else }}今日一句{{ end }}">
@@ -31,7 +31,7 @@
 {{/* ===== 底部搜索胶囊（键盘跟随 + 语音，capsule-kb.js 接管） ===== */}}
 <div id="bk-cap" class="bk-cap" role="search">
   <svg class="bk-cap-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-  <input id="bk-cap-input" type="search" autocomplete="off" enterkeyhint="search" placeholder="{{ if $isEn }}Search lines, authors, sources{{ else }}搜索句子、作者或出处{{ end }}" aria-label="{{ if $isEn }}Search{{ else }}搜索{{ end }}">
+  <input id="bk-cap-input" type="search" autocomplete="off" enterkeyhint="search" placeholder="{{ if $isEn }}Search lines, authors{{ else }}搜索句子、作者{{ end }}" aria-label="{{ if $isEn }}Search{{ else }}搜索{{ end }}">
   <button type="button" class="bk-cap-mic" data-mic aria-label="{{ if $isEn }}Voice search{{ else }}语音搜索{{ end }}" style="display:none">
     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 15a3.5 3.5 0 0 0 3.5-3.5v-5a3.5 3.5 0 1 0-7 0v5A3.5 3.5 0 0 0 12 15zm6-3.5a6 6 0 0 1-12 0H4a8 8 0 0 0 7 7.94V22h2v-2.06A8 8 0 0 0 20 11.5h-2z"/></svg>
   </button>
@@ -67,27 +67,6 @@
     <div class="shrink-0 px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-m-outline/30 bg-m-container-lowest flex gap-3">
       <button id="edit-del" type="button" class="hidden flex-1 h-12 rounded-full bg-m-container text-m-error text-[15px] font-bold">{{ if $isEn }}Delete{{ else }}删除{{ end }}</button>
       <button id="edit-save" type="button" class="flex-1 h-12 rounded-full bg-m-primary text-m-on-primary text-[15px] font-bold">{{ if $isEn }}Save{{ else }}保存{{ end }}</button>
-    </div>
-  </div>
-</div>
-
-{{/* ===== 设置（⋮）：主题 ===== */}}
-<div id="settings-wrap" class="bk-overlay fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="{{ if $isEn }}Settings{{ else }}设置{{ end }}">
-  <div class="bk-overlay-backdrop absolute inset-0 bg-black/40" data-close="settings"></div>
-  <div class="bk-panel bg-m-container-lowest text-m-on-surface shadow-2xl">
-    <div class="sheet-handle"></div>
-    <div class="bk-titlebar">
-      <div class="bk-titlebar-side" aria-hidden="true"></div>
-      <div class="bk-titlebar-mid"><h2 class="text-lg font-extrabold">{{ if $isEn }}Settings{{ else }}设置{{ end }}</h2></div>
-      <div class="bk-titlebar-side"><button type="button" class="bk-icbtn" data-close="settings" aria-label="{{ if $isEn }}Close{{ else }}关闭{{ end }}">{{ partial "icon.html" (dict "name" "x-mark" "uid" "settings-x") }}</button></div>
-    </div>
-    <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-      <p class="text-sm text-m-on-surface-variant mb-3 mt-2">{{ if $isEn }}Theme{{ else }}主题{{ end }}</p>
-      <div class="flex flex-col" role="radiogroup" aria-label="{{ if $isEn }}Theme{{ else }}主题{{ end }}">
-        <button type="button" class="sheet-opt text-[15px] bk-theme-opt" data-theme="system"><span class="flex-1">{{ if $isEn }}Follow system{{ else }}跟随系统{{ end }}</span><span class="bk-theme-check hidden">{{ partial "icon.html" (dict "name" "check" "uid" "theme-system") }}</span></button>
-        <button type="button" class="sheet-opt text-[15px] bk-theme-opt" data-theme="light"><span class="flex-1">{{ if $isEn }}Light{{ else }}浅色{{ end }}</span><span class="bk-theme-check hidden">{{ partial "icon.html" (dict "name" "check" "uid" "theme-light") }}</span></button>
-        <button type="button" class="sheet-opt text-[15px] bk-theme-opt" data-theme="dark"><span class="flex-1">{{ if $isEn }}Dark{{ else }}深色{{ end }}</span><span class="bk-theme-check hidden">{{ partial "icon.html" (dict "name" "check" "uid" "theme-dark") }}</span></button>
-      </div>
     </div>
   </div>
 </div>

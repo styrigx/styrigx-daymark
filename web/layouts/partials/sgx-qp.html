@@ -1,0 +1,18 @@
+{{/* 快捷面板（主站同款内嵌面板，topbar.js 开关）：放在页面 <main> 最前面、顶栏正下方，属于正文流，
+   点长条里的快捷面板图标展开、下面的正文整体下移；再点图标 / 在面板上上滑 / Esc 收起。
+   子站只放本站能自己改的项：深色模式、跟随系统（写本站 sgx-theme-mode / sgx-theme-at，与主站 cookie 谁后改听谁的）、语言；
+   调色板、字体大小、减弱动效跟随主站，底部「全部设置」跳主站设置页。
+   用法：{{ partial "sgx-qp.html" (dict "isEn" $isEn) }} */}}
+{{ $isEn := .isEn }}
+<section id="sgx-qp" class="sgx-qp" data-state="closed" inert aria-label="{{ if $isEn }}Quick panel{{ else }}快捷面板{{ end }}">
+  <div class="sgx-qp-clip">
+  <div class="sgx-qp-sheet">
+    <div class="sgx-qp-grid">
+      <button type="button" class="sgx-qp-tile" data-qp="dark" aria-pressed="false"><span class="sgx-qp-ic">{{ partial "icon.html" "moon" }}</span><span class="sgx-qp-txt"><span class="sgx-qp-label">{{ if $isEn }}Dark mode{{ else }}深色模式{{ end }}</span><span class="sgx-qp-state" data-qp-state></span></span></button>
+      <button type="button" class="sgx-qp-tile" data-qp="system" aria-pressed="false"><span class="sgx-qp-ic">{{ partial "icon.html" "sun" }}</span><span class="sgx-qp-txt"><span class="sgx-qp-label">{{ if $isEn }}Follow system{{ else }}跟随系统{{ end }}</span><span class="sgx-qp-state" data-qp-state></span></span></button>
+      <button type="button" class="sgx-qp-tile" data-qp="lang"><span class="sgx-qp-ic">{{ partial "icon.html" "globe" }}</span><span class="sgx-qp-txt"><span class="sgx-qp-label">{{ if $isEn }}Language{{ else }}语言{{ end }}</span><span class="sgx-qp-state">{{ if $isEn }}English{{ else }}中文{{ end }}</span></span></button>
+    </div>
+    <a class="sgx-qp-all" href="{{ cond $isEn "https://styrigx.com/en/settings/" "https://styrigx.com/settings/" }}"><span>{{ if $isEn }}All settings{{ else }}全部设置{{ end }}</span>{{ partial "icon.html" "chev-r" }}</a>
+  </div>
+  </div>
+</section>

@@ -1,6 +1,7 @@
 {{ define "main" }}
 {{ $isEn := or (eq .Lang "en") (hasPrefix .RelPermalink "/en/") }}
-<main class="max-w-6xl mx-auto px-4 sm:px-6 pb-16" style="padding-top: calc(var(--nav-h, 56px) + env(safe-area-inset-top, 0px) + 48px)">
+<main class="w-full mx-auto pb-16" style="max-width:860px;padding-left:16px;padding-right:16px">
+  {{ partial "sgx-qp.html" (dict "isEn" $isEn) }}
   <section class="text-center py-16">
     <p class="text-6xl font-extrabold text-m-on-surface-variant/40 mb-4">404</p>
     <h1 class="text-xl font-bold text-m-on-surface mb-2">{{ if $isEn }}Page not found{{ else }}页面不存在{{ end }}</h1>
