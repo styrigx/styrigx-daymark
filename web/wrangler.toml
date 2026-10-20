@@ -1,0 +1,7 @@
+# styrigx-daymark —— Cloudflare Pages 配置：只放静态文件。
+# 生产不带任何变量、钥匙和数据绑定：页面的会话检查在主站鉴权网关（styrigx-auth-gateway），
+# 接口和 D1 在 workers/ 下的接口 Worker。
+# 在 web/ 下执行：wrangler pages deploy public
+name = "styrigx-daymark"
+pages_build_output_dir = "public"
+compatibility_date = "2026-10-20"

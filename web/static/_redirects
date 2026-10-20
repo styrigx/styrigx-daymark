@@ -1,0 +1,2 @@
+# 不认 <link rel="icon"> 的场景兜底：跳到主站头像
+/favicon.ico  https://styrigx.com/avatar/32.webp  302

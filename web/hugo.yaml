@@ -1,0 +1,27 @@
+title: '每日一句'
+baseURL: 'https://daymark.styrigx.com/'
+defaultContentLanguage: zh
+defaultContentLanguageInSubdir: false
+hasCJKLanguage: true
+languages:
+  zh:
+    label: 中文
+    weight: 1
+  en:
+    label: English
+    weight: 2
+theme: []
+
+enableRobotsTXT: true
+enableEmoji: true
+
+markup:
+  goldmark:
+    renderer:
+      unsafe: true
+
+params:
+  description: 'Sloan Gray 的每日一句：随手留下值得记住的句子'
+  version: '1.0.0'
+
+disableKinds: ['taxonomy', 'term', 'rss', 'section']

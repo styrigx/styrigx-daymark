@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+{{ $isEn := or (eq .Lang "en") (hasPrefix .RelPermalink "/en/") }}
+<html lang="{{ if $isEn }}en{{ else }}zh{{ end }}" class="scroll-smooth">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f5f8fa">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#10151a">
+<title>{{ if .IsHome }}{{ if $isEn }}Daymark{{ else }}每日一句{{ end }}{{ else }}{{ .Title }} | {{ if $isEn }}Daymark{{ else }}每日一句{{ end }}{{ end }}</title>
+<meta name="description" content="{{ if $isEn }}Sloan Gray's Daymark: lines worth keeping, one a day{{ else }}{{ .Site.Params.description }}{{ end }}">
+{{/* 标签页图标、主屏图标都用主站头像 */}}
+<link rel="icon" href="https://styrigx.com/avatar/32.webp">
+<link rel="apple-touch-icon" href="https://styrigx.com/avatar/192.webp">
+<link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face{font-family:'Inter';font-style:normal;font-weight:400 800;font-display:optional;src:url('/fonts/inter-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+@font-face{font-family:'Inter Fallback';src:local('Arial');size-adjust:107%;ascent-override:90%;descent-override:23%;line-gap-override:0%;}
+:root{--nav-h:68px}/* 顶栏卡片底边位置：16 + 52 */
+</style>
+{{/* B2-7：外观预读（渲染前）——继承主站 sgx-ui cookie 的深浅色、调色板、字体大小、减弱动效；
+     没有 cookie 时与原来一样只看本地 sgx-theme-mode */}}
+<script>{{ (resources.Get "js/sgx/ui-inherit-run.js" | js.Build (dict "format" "iife" "minify" true "target" "es2018")).Content | safeJS }}</script>
+<script>
+/* 布局模式：<980 手机 / ≥980 DeX（沿用主站断点） */
+function __layoutMode(){
+  var m=null;
+  try{m=localStorage.getItem('sgx-layout')}catch(e){}
+  if(m==='phone'||m==='dex')return m;
+  var w=window.innerWidth||1280;
+  return w<980?'phone':'dex';
+}
+function __applyLayout(){
+  var d=document.documentElement,m=__layoutMode();
+  d.classList.remove('layout-phone','layout-dex');
+  d.classList.add('layout-'+m);
+  if(window.__setHeadH)window.__setHeadH();
+}
+__applyLayout();
+/* 标题区高度：手机 max(280px, 35% 可见高度)，DeX max(200px, 25svh) 用 CSS 兜底。
+   JS 只在加载时和横竖屏切换时更新 --head-h（手机）。 */
+window.__setHeadH=function(){
+  if(!document.documentElement.classList.contains('layout-phone'))return;
+  var h=window.innerHeight||0;
+  if(h>0)document.documentElement.style.setProperty('--head-h',Math.max(280,Math.round(h*0.35))+'px');
+};
+window.__setHeadH();
+(function(){
+  var lastO=window.innerWidth>window.innerHeight?'l':'p';
+  function maybeUpd(){
+    var o=window.innerWidth>window.innerHeight?'l':'p';
+    if(o!==lastO){lastO=o;window.__setHeadH()}
+  }
+  window.addEventListener('orientationchange',function(){setTimeout(function(){lastO=window.innerWidth>window.innerHeight?'l':'p';window.__setHeadH()},300)});
+  window.addEventListener('resize',maybeUpd);
+})();
+</script>
+<link rel="stylesheet" href="{{ (resources.Get "css/main.css" | minify | fingerprint).RelPermalink }}">
+</head>
+<body class="text-m-on-surface font-sans antialiased">
+<div id="sgx-wallpaper" aria-hidden="true"></div>
+{{/* 顶栏 v3（与主站同一套，左右对称）：左圆九宫格导航，右圆头像（只显示，不可点）；
+   长条：返回 / 居中 Styrigx（滚动后换成小标题）/ ⋮。 */}}
+<header id="site-nav">
+  <div class="sgx-topbar">
+    <button type="button" class="sgx-tb-nav" aria-label="{{ if $isEn }}Apps{{ else }}导航{{ end }}" aria-haspopup="menu" aria-expanded="false">{{ partial "icon.html" "apps-grid" }}</button>
+    <div class="sgx-tb-pill">
+      <button type="button" class="sgx-tb-pbtn sgx-tb-back" data-go-back aria-label="{{ if $isEn }}Back{{ else }}返回{{ end }}">{{ partial "icon.html" "chevron-left" }}</button>
+      <button type="button" class="sgx-tb-brand" id="nav-home" aria-label="{{ if $isEn }}Daymark home{{ else }}每日一句首页{{ end }}"><span class="sgx-tb-text">Styrigx</span></button>
+      <button type="button" class="sgx-tb-more" id="bk-menu-btn" aria-label="{{ if $isEn }}More options{{ else }}更多选项{{ end }}"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg></button>
+    </div>
+    {{/* 头像由主站统一管理（主站设置页可换），直接读主站 /avatar/ */}}
+    <span class="sgx-tb-me"><img src="https://styrigx.com/avatar/192.webp" alt="" width="52" height="52" class="sgx-tb-avatar"></span>
+  </div>
+  <div id="sgx-tb-navmenu" class="bk-menu hidden" role="menu" aria-label="{{ if $isEn }}Apps{{ else }}导航{{ end }}"></div>
+  <div id="bk-more-menu" class="bk-menu hidden" role="menu"></div>
+</header>
+{{ block "main" . }}{{ end }}
+<footer class="relative z-10 mt-4">
+  <div class="max-w-[1100px] mx-auto px-6 py-8 text-center">
+    <p class="text-xs text-m-on-surface-variant">© 2020–2026 Sloan Gray</p>
+    <p class="sgx-powered">Powered by Styrigx UI</p>
+  </div>
+</footer>
+{{/* 顶栏 v3：滚动行为 + 导航菜单 */}}
+<script>
+/* 顶栏菜单共用定位：fixed 锚定在按钮下方 8px（⋮ 菜单和九宫导航共用）；
+   按钮在左半边（左圆九宫格）就左沿对齐，否则右沿对齐（与主站一致） */
+window.sgxAnchorMenu = function(menu, btn){
+  var r = btn.getBoundingClientRect();
+  menu.style.position = 'fixed';
+  menu.style.top = (r.bottom + 8) + 'px';
+  if (r.left + r.width / 2 < window.innerWidth / 2) {
+    menu.style.left = Math.max(16, r.left) + 'px';
+    menu.style.right = 'auto';
+  } else {
+    menu.style.right = Math.max(16, window.innerWidth - r.right) + 'px';
+    menu.style.left = 'auto';
+  }
+  menu.style.zIndex = '70';
+};
+</script>
+<script>
+(function(){
+  var isEn = document.documentElement.lang === 'en';
+  /* Styrigx 点击：回首页 */
+  var brand = document.querySelector('.sgx-tb-brand');
+  if (brand) brand.addEventListener('click', function(){
+    location.href = isEn ? '/en/' : '/';
+  });
+  /* 小标题移入长条（页面里的 .subpage-mini-title 由 subpage-head.html 输出） */
+  var pill = document.querySelector('.sgx-tb-pill');
+  var mini = document.querySelector('.subpage-mini-title');
+  if (pill && mini) pill.appendChild(mini);
+})();
+</script>
+<script>
+/* 返回（长条左侧）：有历史则回退，否则回主站首页 */
+document.addEventListener('click', function(e){
+  var b = e.target.closest('[data-go-back]');
+  if (!b) return;
+  if (window.history.length > 1) { history.back(); }
+  else { location.href = document.documentElement.lang === 'en' ? 'https://styrigx.com/en/' : 'https://styrigx.com/'; }
+});
+/* 导航菜单（九宫点）：配置数组，当前站点高亮 + ✓ */
+(function(){
+  var btn = document.querySelector('.sgx-tb-nav');
+  var menu = document.getElementById('sgx-tb-navmenu');
+  if (!btn || !menu) return;
+  var isEn = document.documentElement.lang === 'en';
+  var host = location.host;
+  /* 菜单项配置：以后新增子站只需加一行 */
+  var items = [
+    { id: 'home', label: isEn ? 'Main Site' : '主站', url: 'https://styrigx.com' + (isEn ? '/en/' : '/'), match: /^(www\.)?styrigx\.com$/ },
+    { id: 'daymark', label: isEn ? 'Daymark' : '每日一句', url: 'https://daymark.styrigx.com' + (isEn ? '/en/' : '/'), match: /(^|\.)daymark\.styrigx\.com$|^localhost/ },
+    { id: 'blog', label: isEn ? 'Blog' : '博客', url: 'https://blog.styrigx.com' + (isEn ? '/en/' : '/'), match: /(^|\.)blog\.styrigx\.com$/ },
+  ];
+  function isCurrent(it){ try { return it.match.test(host); } catch (e) { return false; } }
+  function render(){
+    menu.innerHTML = items.map(function(it){
+      var cur = isCurrent(it);
+      return '<button type="button" class="bk-menu-item" role="menuitem" data-nav-url="' + it.url + '"' +
+        (cur ? ' aria-current="true"' : '') + '>' +
+        '<span>' + it.label + '</span>' +
+        (cur ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>' : '') +
+        '</button>';
+    }).join('');
+    menu.querySelectorAll('[data-nav-url]').forEach(function(el){
+      el.addEventListener('click', function(){
+        var url = el.getAttribute('data-nav-url');
+        closeMenu();
+        var item = items.filter(function(it){ return it.url === url; })[0];
+        if (item && isCurrent(item)) return; /* 当前站点只关闭菜单 */
+        location.href = url;
+      });
+    });
+  }
+  function openMenu(){
+    render();
+    menu.classList.remove('hidden');
+    btn.setAttribute('aria-expanded', 'true');
+    /* 锚定在导航圆下方、左对齐 */
+    window.sgxAnchorMenu(menu, btn);
+  }
+  function closeMenu(){
+    menu.classList.add('hidden');
+    btn.setAttribute('aria-expanded', 'false');
+  }
+  btn.addEventListener('click', function(e){
+    e.stopPropagation();
+    if (menu.classList.contains('hidden')) { openMenu(); }
+    else { closeMenu(); }
+  });
+  document.addEventListener('click', function(e){
+    if (!menu.classList.contains('hidden') && !e.target.closest('#sgx-tb-navmenu') && !e.target.closest('.sgx-tb-nav')) {
+      closeMenu();
+    }
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && !menu.classList.contains('hidden')) { closeMenu(); }
+  });
+})();
+</script>
+<script>
+/* 顶栏滚动状态：大标题随滚动淡出，碰到顶栏下沿时完全消失并切到 sgx-stuck（小标题出现、Styrigx 隐藏）。
+   FADE = 淡出区间（px）：大标题顶边距顶栏下沿 FADE px 开始淡，贴到下沿时为 0。 */
+(function(){
+  var head = document.querySelector('[data-subpage-head]');
+  if (!head) return;
+  var hero = head.querySelector('.subpage-hero');
+  var bar = document.querySelector('.sgx-topbar');
+  var FADE = 48;
+  var ticking = false;
+  function update(){
+    ticking = false;
+    var barBottom = bar ? bar.getBoundingClientRect().bottom : 68;
+    var past, p = 0;
+    if (hero) {
+      /* 用 head 位置 + offsetTop 算大标题顶边，不受它自己的 translateY 影响 */
+      var top = head.getBoundingClientRect().top + hero.offsetTop;
+      p = Math.min(1, Math.max(0, (barBottom + FADE - top) / FADE));
+      past = p >= 1;
+    } else {
+      past = (window.scrollY || 0) > head.offsetHeight * 0.55;
+    }
+    if (hero) hero.style.setProperty('--hero-fade', p.toFixed(3));
+    document.body.classList.toggle('sgx-stuck', past);
+  }
+  function onScroll(){ if (!ticking) { ticking = true; requestAnimationFrame(update); } }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+  window.addEventListener('pageshow', update);
+  update();
+})();
+</script>
+{{/* SGX 锁屏同步：切回前台 / bfcache 恢复时向服务端确认会话（各页面 pagejs 之前加载） */}}
+<script src="{{ (resources.Get "js/sgx-lock-sync.js" | minify | fingerprint).RelPermalink }}"></script>
+
+{{ block "pagejs" . }}{{ end }}
+</body>
+</html>

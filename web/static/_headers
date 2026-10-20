@@ -1,0 +1,7 @@
+# 静态资源缓存（Pages 只放静态文件，_headers 生效）。
+# /js/ /css/ 下由 Hugo Pipes 生成的文件名都带内容哈希（CI 检查构建产物里没有未指纹化的 /js/ 引用），长期缓存。
+/js/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/css/*
+  Cache-Control: public, max-age=31536000, immutable

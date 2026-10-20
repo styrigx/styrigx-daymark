@@ -1,0 +1,11 @@
+{{/* 子页面统一标题区（v2.0）：标题区内不再输出 ← 和 ⋮ 按钮，菜单功能全部交给顶栏。
+   用法：{{ partial "subpage-head.html" (dict "title" .Title "isEn" $isEn) }}
+   "actions" 参数已废弃，不再输出。
+   小标题 .subpage-mini-title 由 baseof.html 移入顶栏长条。 */}}
+{{ $en := .isEn }}
+<header class="subpage-head" data-subpage-head>
+  <div class="subpage-hero">
+    <h1 class="subpage-title">{{ .title }}</h1>
+  </div>
+</header>
+<div class="subpage-mini-title" aria-hidden="true">{{ .title }}</div>

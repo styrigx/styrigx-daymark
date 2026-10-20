@@ -1,0 +1,19 @@
+{{/* 统一搜索条组件（2.3.5）：browser / files / settings 同一视觉组件。
+   参数：page ("browser"|"files"|"settings")、isEn、barId、placeholder、micAria、
+         openId (files/settings 内层打开按钮 id)、engineAria/menuAria (browser)。
+   各页行为 JS 保留在各自页面中，只统一外观尺寸与麦克风行为。 */}}
+{{ $page := .page }}
+<div id="{{ .barId }}" class="sgx-searchbar sgx-searchbar-{{ $page }}" role="search">
+  {{ if eq $page "browser" }}
+  <button type="button" id="brw-engine-btn" class="sgx-sb-btn" aria-label="{{ .engineAria }}"><span id="brw-engine-ic"></span></button>
+  <input id="brw-input" type="search" autocomplete="off" enterkeyhint="search" placeholder="{{ .placeholder }}">
+  <button type="button" id="brw-mic" class="sgx-sb-btn" aria-label="{{ .micAria }}">{{ partial "icon.html" "mic" }}</button>
+  <button type="button" id="brw-menu-btn" class="sgx-sb-btn" aria-label="{{ .menuAria }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg></button>
+  {{ else }}
+  <button type="button" id="{{ .openId }}" class="sgx-sb-open" aria-label="{{ .placeholder }}">
+    <span class="sgx-sb-lead">{{ partial "icon.html" "search" }}</span>
+    <span class="sgx-sb-ph">{{ .placeholder }}</span>
+  </button>
+  <button type="button" id="{{ .micId }}" class="sgx-sb-btn" aria-label="{{ .micAria }}" style="display:none">{{ partial "icon.html" "mic" }}</button>
+  {{ end }}
+</div>

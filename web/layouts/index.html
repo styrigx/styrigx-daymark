@@ -1,0 +1,117 @@
+{{ define "main" }}
+{{ $isEn := or (eq .Lang "en") (hasPrefix .RelPermalink "/en/") }}
+{{/* 每日一句首页：大标题 + 今日一句卡 + 标签筛选条 + 句子列表 + 底部搜索胶囊。
+   主人（owner）：今日卡下有「记一句」，点句子卡打开编辑弹层；访客只读、只看公开句子。
+   数据全走 daymark.styrigx.com/api/*（接口 Worker，见 workers/）。 */}}
+<main id="dm-main" class="w-full mx-auto pb-6" style="max-width:860px;padding-left:16px;padding-right:16px">
+  {{ partial "subpage-head.html" (dict "title" (cond $isEn "Daymark" "每日一句") "isEn" $isEn) }}
+
+  {{/* ===== 今日一句 ===== */}}
+  <section id="dm-today" class="dm-today mb-6" aria-label="{{ if $isEn }}Today{{ else }}今日一句{{ end }}">
+    <p class="dm-today-day" id="dm-today-day"></p>
+    <blockquote id="dm-today-body" class="dm-today-body"></blockquote>
+    <div id="dm-add-row" class="hidden mt-5 flex justify-center">
+      <button id="dm-add" type="button" class="inline-flex items-center gap-2 h-11 px-6 rounded-full bg-m-primary text-m-on-primary text-[15px] font-bold active:scale-[.97] transition-transform">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>{{ if $isEn }}Save a line{{ else }}记一句{{ end }}
+      </button>
+    </div>
+  </section>
+
+  {{/* ===== 标签筛选条 ===== */}}
+  <div id="dm-tags" class="no-scrollbar flex gap-2 overflow-x-auto whitespace-nowrap pb-3" role="tablist" aria-label="{{ if $isEn }}Filter by tag{{ else }}按标签筛选{{ end }}"></div>
+
+  {{/* ===== 句子列表 ===== */}}
+  <div id="dm-list" class="flex flex-col gap-3"></div>
+  <p id="dm-no-results" class="hidden text-center py-16 text-sm text-m-on-surface-variant">{{ if $isEn }}Nothing matches.{{ else }}没有符合条件的句子。{{ end }}</p>
+  <p id="dm-empty" class="hidden text-center py-16 text-[15px] text-m-on-surface-variant"></p>
+  <p id="dm-loading" class="text-center py-16 text-sm text-m-on-surface-variant">{{ if $isEn }}Loading…{{ else }}加载中…{{ end }}</p>
+</main>
+<style>body:has(#bk-cap) footer{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}</style>
+
+{{/* ===== 底部搜索胶囊（键盘跟随 + 语音，capsule-kb.js 接管） ===== */}}
+<div id="bk-cap" class="bk-cap" role="search">
+  <svg class="bk-cap-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+  <input id="bk-cap-input" type="search" autocomplete="off" enterkeyhint="search" placeholder="{{ if $isEn }}Search lines, authors, sources{{ else }}搜索句子、作者或出处{{ end }}" aria-label="{{ if $isEn }}Search{{ else }}搜索{{ end }}">
+  <button type="button" class="bk-cap-mic" data-mic aria-label="{{ if $isEn }}Voice search{{ else }}语音搜索{{ end }}" style="display:none">
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 15a3.5 3.5 0 0 0 3.5-3.5v-5a3.5 3.5 0 1 0-7 0v5A3.5 3.5 0 0 0 12 15zm6-3.5a6 6 0 0 1-12 0H4a8 8 0 0 0 7 7.94V22h2v-2.06A8 8 0 0 0 20 11.5h-2z"/></svg>
+  </button>
+</div>
+
+{{/* ===== 记一句 / 编辑弹层（主人） ===== */}}
+<div id="edit-wrap" class="bk-overlay fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+  <div class="bk-overlay-backdrop absolute inset-0 bg-black/40" data-close="edit"></div>
+  <div class="bk-panel bg-m-container-lowest text-m-on-surface shadow-2xl">
+    <div class="sheet-handle"></div>
+    <div class="bk-titlebar">
+      <div class="bk-titlebar-side" aria-hidden="true"></div>
+      <div class="bk-titlebar-mid"><h2 id="edit-title" class="text-lg font-extrabold"></h2></div>
+      <div class="bk-titlebar-side"><button type="button" class="bk-icbtn" data-close="edit" aria-label="{{ if $isEn }}Close{{ else }}关闭{{ end }}">{{ partial "icon.html" (dict "name" "x-mark" "uid" "edit-x") }}</button></div>
+    </div>
+    <form id="edit-form" class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pb-4 flex flex-col gap-4" novalidate>
+      <label class="dm-field"><span>{{ if $isEn }}The line{{ else }}句子{{ end }}</span>
+        <textarea id="f-text" rows="4" maxlength="500" required placeholder="{{ if $isEn }}What's worth keeping today?{{ else }}今天想留下哪一句？{{ end }}"></textarea></label>
+      <label class="dm-field"><span>{{ if $isEn }}Translation (optional){{ else }}译文（可不填）{{ end }}</span>
+        <textarea id="f-trans" rows="2" maxlength="500"></textarea></label>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="dm-field"><span>{{ if $isEn }}Author{{ else }}作者{{ end }}</span><input id="f-author" type="text" maxlength="60" autocomplete="off"></label>
+        <label class="dm-field"><span>{{ if $isEn }}Source{{ else }}出处{{ end }}</span><input id="f-source" type="text" maxlength="120" autocomplete="off"></label>
+      </div>
+      <label class="dm-field"><span>{{ if $isEn }}Tags (comma separated){{ else }}标签（逗号或空格分开）{{ end }}</span><input id="f-tags" type="text" maxlength="200" autocomplete="off"></label>
+      <label class="flex items-center gap-3 cursor-pointer">
+        <span class="flex-1 text-[15px]">{{ if $isEn }}Public to visitors{{ else }}公开给访客{{ end }}</span>
+        <input id="f-public" type="checkbox" class="peer sr-only" checked>
+        <span class="shrink-0 w-12 h-7 rounded-full bg-m-container peer-checked:bg-m-primary relative transition-colors after:content-[''] after:absolute after:top-1 after:left-1 after:w-5 after:h-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5"></span>
+      </label>
+      <p id="edit-err" class="hidden text-sm text-m-error"></p>
+    </form>
+    <div class="shrink-0 px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-m-outline/30 bg-m-container-lowest flex gap-3">
+      <button id="edit-del" type="button" class="hidden flex-1 h-12 rounded-full bg-m-container text-m-error text-[15px] font-bold">{{ if $isEn }}Delete{{ else }}删除{{ end }}</button>
+      <button id="edit-save" type="button" class="flex-1 h-12 rounded-full bg-m-primary text-m-on-primary text-[15px] font-bold">{{ if $isEn }}Save{{ else }}保存{{ end }}</button>
+    </div>
+  </div>
+</div>
+
+{{/* ===== 设置（⋮）：主题 ===== */}}
+<div id="settings-wrap" class="bk-overlay fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="{{ if $isEn }}Settings{{ else }}设置{{ end }}">
+  <div class="bk-overlay-backdrop absolute inset-0 bg-black/40" data-close="settings"></div>
+  <div class="bk-panel bg-m-container-lowest text-m-on-surface shadow-2xl">
+    <div class="sheet-handle"></div>
+    <div class="bk-titlebar">
+      <div class="bk-titlebar-side" aria-hidden="true"></div>
+      <div class="bk-titlebar-mid"><h2 class="text-lg font-extrabold">{{ if $isEn }}Settings{{ else }}设置{{ end }}</h2></div>
+      <div class="bk-titlebar-side"><button type="button" class="bk-icbtn" data-close="settings" aria-label="{{ if $isEn }}Close{{ else }}关闭{{ end }}">{{ partial "icon.html" (dict "name" "x-mark" "uid" "settings-x") }}</button></div>
+    </div>
+    <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+      <p class="text-sm text-m-on-surface-variant mb-3 mt-2">{{ if $isEn }}Theme{{ else }}主题{{ end }}</p>
+      <div class="flex flex-col" role="radiogroup" aria-label="{{ if $isEn }}Theme{{ else }}主题{{ end }}">
+        <button type="button" class="sheet-opt text-[15px] bk-theme-opt" data-theme="system"><span class="flex-1">{{ if $isEn }}Follow system{{ else }}跟随系统{{ end }}</span><span class="bk-theme-check hidden">{{ partial "icon.html" (dict "name" "check" "uid" "theme-system") }}</span></button>
+        <button type="button" class="sheet-opt text-[15px] bk-theme-opt" data-theme="light"><span class="flex-1">{{ if $isEn }}Light{{ else }}浅色{{ end }}</span><span class="bk-theme-check hidden">{{ partial "icon.html" (dict "name" "check" "uid" "theme-light") }}</span></button>
+        <button type="button" class="sheet-opt text-[15px] bk-theme-opt" data-theme="dark"><span class="flex-1">{{ if $isEn }}Dark{{ else }}深色{{ end }}</span><span class="bk-theme-check hidden">{{ partial "icon.html" (dict "name" "check" "uid" "theme-dark") }}</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{/* ===== 删除确认 ===== */}}
+<div id="confirm-wrap" class="bk-overlay fixed inset-0 z-[70]" role="alertdialog" aria-modal="true" aria-label="{{ if $isEn }}Confirm{{ else }}确认{{ end }}">
+  <div class="bk-overlay-backdrop absolute inset-0 bg-black/40" data-close="confirm"></div>
+  <div class="bk-panel bk-dialog bg-m-container-lowest text-m-on-surface shadow-2xl">
+    <div class="px-6 pt-6 pb-5">
+      <p class="text-[15px] leading-relaxed text-center">{{ if $isEn }}Delete this line? This cannot be undone.{{ else }}确定删除这一句吗？删除后无法恢复。{{ end }}</p>
+      <div class="flex gap-3 mt-5">
+        <button id="confirm-cancel" type="button" class="flex-1 h-12 rounded-full bg-m-container text-m-on-surface text-[15px] font-bold">{{ if $isEn }}Cancel{{ else }}取消{{ end }}</button>
+        <button id="confirm-ok" type="button" class="flex-1 h-12 rounded-full bg-m-error text-m-on-error text-[15px] font-bold">{{ if $isEn }}Delete{{ else }}删除{{ end }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="bk-toast" class="hidden fixed left-1/2 -translate-x-1/2 bottom-24 z-[80] max-w-[calc(100vw-2rem)] px-4 py-3 rounded-2xl bg-m-inverse-surface text-m-inverse-on-surface text-sm shadow-lg" role="status"></div>
+{{ end }}
+
+{{ define "pagejs" }}
+{{ $isEn := or (eq .Lang "en") (hasPrefix .RelPermalink "/en/") }}
+<script type="module" src="{{ (resources.Get "js/sgx/entry.js" | js.Build | minify | fingerprint).RelPermalink }}"></script>
+<script id="sgx-i18n-core" type="application/json">{"vsAria":{"zh":"语音输入","en":"Voice input"},"vsClose":{"zh":"关闭","en":"Close"},"vsSpeak":{"zh":"立即说出","en":"Speak now"},"vsLang":{"zh":"中文（中国）","en":"English (US)"},"vsNoPerm":{"zh":"需要麦克风权限","en":"Microphone permission needed"},"vsRetry":{"zh":"没听清，点麦克风重试","en":"Didn't catch that, tap the mic to retry"}}</script>
+<script src="{{ (resources.Get "js/daymark.js" | minify | fingerprint).RelPermalink }}"></script>
+{{ end }}

@@ -1,0 +1,19 @@
+{
+  "dependencies": {
+    "autoprefixer": "^10.6.1",
+    "postcss": "^8.5.29",
+    "tailwindcss": "^3.4.19"
+  },
+  "description": "每日一句 daymark.styrigx.com",
+  "name": "styrigx-daymark",
+  "scripts": {
+    "build:css": "tailwindcss -c web/tailwind.config.js -i web/assets/css/input.css -o web/assets/css/main.css --minify",
+    "build": "npm run build:css && hugo --minify -s web",
+    "test": "node --test tests/web/*.test.mjs tests/workers/*.test.mjs",
+    "test:e2e": "playwright test --config=tests/config/playwright.e2e.config.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0"
+  },
+  "version": "1.0.0"
+}

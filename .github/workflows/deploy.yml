@@ -1,0 +1,181 @@
+name: Build and Deploy (daymark Pages + styrigx-daymark-core)
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Assert zero-key layout
+        # 本仓库不持任何钥匙：页面会话在主站鉴权网关验，接口（workers/core）经服务绑定问网关。
+        # 仓库里不许有 Pages Functions，不许出现钥匙变量名或会话验签代码。
+        run: |
+          set -u
+          if [ -e functions ] || [ -e web/functions ]; then echo "FAIL: Pages Functions must not exist"; exit 1; fi
+          if grep -rn -E "SGX_[A-Z]+_(PUBLIC|PRIVATE|KEY)|SGX_ED25519_|SGX_STEPUP_|SGX_ROOT_KEY" \
+               --include="*.js" --include="*.mjs" --include="*.toml" --include="*.html" web/ workers/ scripts/ 2>/dev/null; then
+            echo "FAIL: daymark must not hold keys"; exit 1
+          fi
+          echo "OK: zero-key layout."
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: '0.162.0'
+          extended: true
+
+      - name: Setup Node
+        # Node 22：测试里用 node:sqlite 真跑 D1 的 SQL
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build CSS
+        run: npm run build:css
+
+      - name: Run tests
+        run: npm test
+
+      - name: core bundle check (dry-run)
+        working-directory: workers/core
+        run: npx --yes wrangler@4 deploy --dry-run --outdir "$RUNNER_TEMP/core-dist"
+
+      - name: Build site
+        run: hugo --minify -s web
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Run phone E2E
+        run: npm run test:e2e
+
+      - name: Check no unversioned /js/ refs in build output
+        run: |
+          refs=$(grep -rhoE 'src="/js/[a-zA-Z0-9_./-]+\.js"' web/public/ 2>/dev/null | sort -u || true)
+          bad=$(echo "$refs" | grep -vE '\.[0-9a-f]{8,}\.(js|mjs)"' | grep -v '^$' || true)
+          if [ -n "$bad" ]; then
+            echo "ERROR: Found unversioned /js/ refs in build output:"
+            echo "$bad"
+            exit 1
+          fi
+          echo "OK: all /js/ refs are fingerprinted."
+
+      - name: Gate check - gateway must already guard daymark pages
+        # Pages 没有验票代码、core 要经服务绑定问网关：网关必须先登记 daymark.styrigx.com。
+        # 未登录访问首页必须是网关回的 302（带 X-SGX-Runtime: worker）。不满足就什么都不部署。
+        # 例外：首次部署时域名还没解析（Pages 自定义域名要等项目建好后再绑），这时页面不对外，放行。
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -u
+          if ! getent hosts daymark.styrigx.com >/dev/null; then echo "daymark.styrigx.com not resolvable yet: first deploy, skip gate"; exit 0; fi
+          hdr=$(curl -sS -o /dev/null -D - -w 'HTTP_CODE:%{http_code}\n' https://daymark.styrigx.com/ | tr -d '\r')
+          code=$(printf '%s' "$hdr" | sed -n 's/^HTTP_CODE://p')
+          rt=$(printf '%s' "$hdr" | awk -F': ' 'tolower($1)=="x-sgx-runtime"{print $2}')
+          echo "daymark.styrigx.com/ -> $code runtime=${rt:-none}"
+          [ "$code" = "302" ] && [ "$rt" = "worker" ] || { echo "::error::gateway is not guarding daymark.styrigx.com yet; deploy the gateway first"; exit 1; }
+
+      - name: Apply D1 migrations
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        # 代码里也有 CREATE TABLE IF NOT EXISTS 兜底；token 没有 D1 权限时不阻塞部署
+        continue-on-error: true
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: workers/core
+          wranglerVersion: '4'
+          command: d1 migrations apply styrigx-daymark --remote
+
+      - name: Deploy styrigx-daymark-core
+        # 先部署接口 Worker（路由 daymark.styrigx.com/api/* 优先于 Pages），再部署 Pages。
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: workers/core
+          wranglerVersion: '4'
+          command: deploy
+
+      - name: Smoke test core (must be served by the Worker)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -u
+          if ! getent hosts daymark.styrigx.com >/dev/null; then echo "domain not bound yet: skip"; exit 0; fi
+          check() { # 路径 期望状态码 期望的标记头
+            for i in 1 2 3 4 5 6; do
+              hdr=$(curl -sS -o /dev/null -D - -w 'HTTP_CODE:%{http_code}\n' "https://daymark.styrigx.com$1" | tr -d '\r' || true)
+              code=$(printf '%s' "$hdr" | sed -n 's/^HTTP_CODE://p')
+              rt=$(printf '%s' "$hdr" | awk -F': ' -v h="$(echo "$3" | tr A-Z a-z)" 'tolower($1)==h{print $2}')
+              echo "$1 -> $code $3=${rt:-none} (try $i)"
+              if [ "$code" = "$2" ] && [ "$rt" = "worker" ]; then return 0; fi
+              sleep 5
+            done
+            echo "::error::$1 expected $2 with $3: worker"; return 1
+          }
+          ok=0
+          check /api/quotes 401 X-Daymark-Runtime || ok=1
+          check /api/today 200 X-Daymark-Runtime || ok=1
+          check /api/session-check 401 X-SGX-Runtime || ok=1
+          exit $ok
+
+      - name: Ensure Pages project exists
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        continue-on-error: true
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: web
+          wranglerVersion: '4'
+          command: pages project create styrigx-daymark --production-branch=main
+
+      - name: Deploy to Cloudflare Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: web
+          wranglerVersion: '4'
+          command: pages deploy public --project-name=styrigx-daymark --commit-dirty=true
+
+      - name: Smoke test Pages (pages behind the gateway, static files direct, pages.dev not open)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -u
+          if ! getent hosts daymark.styrigx.com >/dev/null; then echo "domain not bound yet: skip"; exit 0; fi
+          ok=0
+          probe() { # url 期望状态码 期望 X-SGX-Runtime(worker|none)
+            for i in 1 2 3; do
+              hdr=$(curl -sS -o /dev/null -D - -w 'HTTP_CODE:%{http_code}\n' "$1" | tr -d '\r' || true)
+              code=$(printf '%s' "$hdr" | sed -n 's/^HTTP_CODE://p')
+              rt=$(printf '%s' "$hdr" | awk -F': ' 'tolower($1)=="x-sgx-runtime"{print $2}')
+              echo "$1 -> $code runtime=${rt:-none} (try $i)"
+              if [ "$code" = "$2" ] && [ "${rt:-none}" = "$3" ]; then return 0; fi
+              sleep 5
+            done
+            echo "::error::$1 expected $2 runtime=$3"; return 1
+          }
+          for p in / /en/ /zh/ /sitemap.xml; do probe "https://daymark.styrigx.com$p" 302 worker || ok=1; done
+          js=$(cd web/public && find js -maxdepth 1 -name '*.js' | head -1)
+          [ -n "$js" ] && { probe "https://daymark.styrigx.com/$js" 200 none || ok=1; }
+          hdr=$(curl -sS -o /dev/null -D - -w 'HTTP_CODE:%{http_code}\n' https://styrigx-daymark.pages.dev/ | tr -d '\r' || true)
+          code=$(printf '%s' "$hdr" | sed -n 's/^HTTP_CODE://p')
+          loc=$(printf '%s' "$hdr" | awk -F': ' 'tolower($1)=="location"{print $2}')
+          echo "pages.dev / -> $code $loc"
+          [ "$code $loc" = "301 https://daymark.styrigx.com/" ] || { echo "::error::pages.dev did not redirect to daymark.styrigx.com"; ok=1; }
+          exit $ok
