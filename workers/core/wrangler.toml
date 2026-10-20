@@ -1,4 +1,4 @@
-# styrigx-daymark-core：每日一句的核心 Worker（存句子、读句子、今日一句）（CI 部署；承接 daymark.styrigx.com/api/*）
+# styrigx-daymark-core：日刻的核心 Worker（存句子、读句子、今日一句）（CI 部署；承接 daymark.styrigx.com/api/*）
 #
 # 全部后端代码都在本目录：src/（入口、路由表、接口）+ migrations/（D1）。
 # Pages（styrigx-daymark，配置见 web/wrangler.toml）只放静态文件；页面的会话检查在主站鉴权网关。

@@ -1,4 +1,4 @@
-title: '每日一句'
+title: '日刻'
 baseURL: 'https://daymark.styrigx.com/'
 defaultContentLanguage: zh
 defaultContentLanguageInSubdir: false
@@ -21,7 +21,7 @@ markup:
       unsafe: true
 
 params:
-  description: 'Sloan Gray 的每日一句：随手留下值得记住的句子'
+  description: 'Sloan Gray 的日刻：每天刻下一句值得记住的话'
   version: '1.0.0'
 
 disableKinds: ['taxonomy', 'term', 'rss', 'section']

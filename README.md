@@ -4,7 +4,7 @@
 
 # Styrigx Daymark
 
-每日一句：随手留下值得记住的句子，每天挑一句给你看。
+日刻（Daymark）：随手刻下值得记住的句子，每天挑一句给你看。
 
 [在线访问 daymark.styrigx.com](https://daymark.styrigx.com) · [主站 styrigx.com](https://styrigx.com) · [博客 blog.styrigx.com](https://blog.styrigx.com) · [GitHub @styrigx](https://github.com/styrigx)
 

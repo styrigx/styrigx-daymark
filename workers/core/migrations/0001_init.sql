@@ -1,4 +1,4 @@
--- 每日一句：句子表。代码里也有 CREATE TABLE IF NOT EXISTS 兜底（src/api/_quotes.js）。
+-- 日刻：句子表。代码里也有 CREATE TABLE IF NOT EXISTS 兜底（src/api/_quotes.js）。
 CREATE TABLE IF NOT EXISTS quotes (
   id TEXT PRIMARY KEY,
   text TEXT NOT NULL,

@@ -1,4 +1,4 @@
-/* assets/js/daymark.js —— 每日一句首页逻辑（浏览器 IIFE；node 测试时导出纯函数）。
+/* assets/js/daymark.js —— 日刻首页逻辑（浏览器 IIFE；node 测试时导出纯函数）。
  *
  * 数据：GET /api/quotes（owner 全部 / visitor 公开）、GET /api/today（今日一句）；
  * 主人写：POST /api/quotes、PUT/DELETE /api/quotes?id=。读请求走 sgxLockSync.apiFetch（401 = 锁定 → 刷新去锁屏）。

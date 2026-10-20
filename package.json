@@ -4,7 +4,7 @@
     "postcss": "^8.5.29",
     "tailwindcss": "^3.4.19"
   },
-  "description": "每日一句 daymark.styrigx.com",
+  "description": "日刻 daymark.styrigx.com",
   "name": "styrigx-daymark",
   "scripts": {
     "build:css": "tailwindcss -c web/tailwind.config.js -i web/assets/css/input.css -o web/assets/css/main.css --minify",

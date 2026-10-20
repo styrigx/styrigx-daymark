@@ -1237,7 +1237,7 @@ dialog.sgx-vs-dlg.show .sgx-vs-card{transform:none}
 .bk-titlebar-mid{display:flex;align-items:center;justify-content:center;min-width:0}
 .bk-titlebar-mid h2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-/* ===== 每日一句（Daymark） ===== */
+/* ===== 日刻（Daymark） ===== */
 /* 今日一句：居中大字卡 */
 .dm-today{border-radius:1.75rem;background:var(--m-container-lowest);border:1px solid var(--m-outline);padding:28px 22px 24px;text-align:center}
 .dm-today-day{font-size:13px;font-weight:600;letter-spacing:.04em;color:var(--m-primary);margin-bottom:14px}

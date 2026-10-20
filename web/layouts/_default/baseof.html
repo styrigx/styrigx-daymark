@@ -7,7 +7,7 @@
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#f5f8fa">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#10151a">
-<title>{{ if .IsHome }}{{ if $isEn }}Daymark{{ else }}每日一句{{ end }}{{ else }}{{ .Title }} | {{ if $isEn }}Daymark{{ else }}每日一句{{ end }}{{ end }}</title>
+<title>{{ if .IsHome }}{{ if $isEn }}Daymark{{ else }}日刻{{ end }}{{ else }}{{ .Title }} | {{ if $isEn }}Daymark{{ else }}日刻{{ end }}{{ end }}</title>
 <meta name="description" content="{{ if $isEn }}Sloan Gray's Daymark: lines worth keeping, one a day{{ else }}{{ .Site.Params.description }}{{ end }}">
 {{/* 标签页图标、主屏图标都用主站头像 */}}
 <link rel="icon" href="https://styrigx.com/avatar/32.webp">
@@ -66,7 +66,7 @@ window.__setHeadH();
     <button type="button" class="sgx-tb-nav" aria-label="{{ if $isEn }}Apps{{ else }}导航{{ end }}" aria-haspopup="menu" aria-expanded="false">{{ partial "icon.html" "apps-grid" }}</button>
     <div class="sgx-tb-pill">
       <button type="button" class="sgx-tb-pbtn sgx-tb-back" data-go-back aria-label="{{ if $isEn }}Back{{ else }}返回{{ end }}">{{ partial "icon.html" "chevron-left" }}</button>
-      <button type="button" class="sgx-tb-brand" id="nav-home" aria-label="{{ if $isEn }}Daymark home{{ else }}每日一句首页{{ end }}"><span class="sgx-tb-text">Styrigx</span></button>
+      <button type="button" class="sgx-tb-brand" id="nav-home" aria-label="{{ if $isEn }}Daymark home{{ else }}日刻首页{{ end }}"><span class="sgx-tb-text">Styrigx</span></button>
       <button type="button" class="sgx-tb-more" id="bk-menu-btn" aria-label="{{ if $isEn }}More options{{ else }}更多选项{{ end }}"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg></button>
     </div>
     {{/* 头像由主站统一管理（主站设置页可换），直接读主站 /avatar/ */}}
@@ -132,7 +132,7 @@ document.addEventListener('click', function(e){
   /* 菜单项配置：以后新增子站只需加一行 */
   var items = [
     { id: 'home', label: isEn ? 'Main Site' : '主站', url: 'https://styrigx.com' + (isEn ? '/en/' : '/'), match: /^(www\.)?styrigx\.com$/ },
-    { id: 'daymark', label: isEn ? 'Daymark' : '每日一句', url: 'https://daymark.styrigx.com' + (isEn ? '/en/' : '/'), match: /(^|\.)daymark\.styrigx\.com$|^localhost/ },
+    { id: 'daymark', label: isEn ? 'Daymark' : '日刻', url: 'https://daymark.styrigx.com' + (isEn ? '/en/' : '/'), match: /(^|\.)daymark\.styrigx\.com$|^localhost/ },
     { id: 'blog', label: isEn ? 'Blog' : '博客', url: 'https://blog.styrigx.com' + (isEn ? '/en/' : '/'), match: /(^|\.)blog\.styrigx\.com$/ },
   ];
   function isCurrent(it){ try { return it.match.test(host); } catch (e) { return false; } }

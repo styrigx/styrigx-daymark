@@ -1,10 +1,10 @@
 {{ define "main" }}
 {{ $isEn := or (eq .Lang "en") (hasPrefix .RelPermalink "/en/") }}
-{{/* 每日一句首页：大标题 + 今日一句卡 + 标签筛选条 + 句子列表 + 底部搜索胶囊。
+{{/* 日刻首页：大标题 + 今日一句卡 + 标签筛选条 + 句子列表 + 底部搜索胶囊。
    主人（owner）：今日卡下有「记一句」，点句子卡打开编辑弹层；访客只读、只看公开句子。
    数据全走 daymark.styrigx.com/api/*（接口 Worker，见 workers/）。 */}}
 <main id="dm-main" class="w-full mx-auto pb-6" style="max-width:860px;padding-left:16px;padding-right:16px">
-  {{ partial "subpage-head.html" (dict "title" (cond $isEn "Daymark" "每日一句") "isEn" $isEn) }}
+  {{ partial "subpage-head.html" (dict "title" (cond $isEn "Daymark" "日刻") "isEn" $isEn) }}
 
   {{/* ===== 今日一句 ===== */}}
   <section id="dm-today" class="dm-today mb-6" aria-label="{{ if $isEn }}Today{{ else }}今日一句{{ end }}">
