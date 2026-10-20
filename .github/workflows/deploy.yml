@@ -73,11 +73,33 @@ jobs:
           fi
           echo "OK: all /js/ refs are fingerprinted."
 
+      - name: Upload site build
+        # 部署 job 直接用这份产物，不再重建
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-public
+          path: web/public
+          retention-days: 1
+
+  # 只在 main 推送时部署，测试 job 不碰任何钥匙。命名一一对应（同 auth gateway）：
+  #   Cloudflare token 名 = GitHub 环境名 = 环境密钥名（大写、横线换下划线）
+  #   styrigx-daymark-core-deploy  -> STYRIGX_DAYMARK_CORE_DEPLOY   D1 + Workers Scripts + Workers Routes
+  #   styrigx-daymark-pages-deploy -> STYRIGX_DAYMARK_PAGES_DEPLOY  Cloudflare Pages（仓库级密钥，同 space：只能推静态页面，不碰数据）
+  # 只有 core 环境限 main；CLOUDFLARE_ACCOUNT_ID 不是钥匙，留在仓库级。
+  deploy-core:
+    needs: build-and-deploy
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: STYRIGX_DAYMARK_CORE_DEPLOY
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Gate check - gateway must already guard daymark pages
         # Pages 没有验票代码、core 要经服务绑定问网关：网关必须先登记 daymark.styrigx.com。
         # 未登录访问首页必须是网关回的 302（带 X-SGX-Runtime: worker）。不满足就什么都不部署。
         # 例外：首次部署时域名还没解析（Pages 自定义域名要等项目建好后再绑），这时页面不对外，放行。
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           set -u
           if ! getent hosts daymark.styrigx.com >/dev/null; then echo "daymark.styrigx.com not resolvable yet: first deploy, skip gate"; exit 0; fi
@@ -88,12 +110,9 @@ jobs:
           [ "$code" = "302" ] && [ "$rt" = "worker" ] || { echo "::error::gateway is not guarding daymark.styrigx.com yet; deploy the gateway first"; exit 1; }
 
       - name: Apply D1 migrations
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        # 代码里也有 CREATE TABLE IF NOT EXISTS 兜底；token 没有 D1 权限时不阻塞部署
-        continue-on-error: true
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          apiToken: ${{ secrets.STYRIGX_DAYMARK_CORE_DEPLOY }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: workers/core
           wranglerVersion: '4'
@@ -101,17 +120,15 @@ jobs:
 
       - name: Deploy styrigx-daymark-core
         # 先部署接口 Worker（路由 daymark.styrigx.com/api/* 优先于 Pages），再部署 Pages。
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          apiToken: ${{ secrets.STYRIGX_DAYMARK_CORE_DEPLOY }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: workers/core
           wranglerVersion: '4'
           command: deploy
 
       - name: Smoke test core (must be served by the Worker)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           set -u
           if ! getent hosts daymark.styrigx.com >/dev/null; then echo "domain not bound yet: skip"; exit 0; fi
@@ -132,29 +149,41 @@ jobs:
           check /api/session-check 401 X-SGX-Runtime || ok=1
           exit $ok
 
+  deploy-pages:
+    needs: deploy-core
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        # web/wrangler.toml 要跟着部署
+        uses: actions/checkout@v4
+
+      - name: Download site build
+        uses: actions/download-artifact@v4
+        with:
+          name: site-public
+          path: web/public
+
       - name: Ensure Pages project exists
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         continue-on-error: true
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          apiToken: ${{ secrets.STYRIGX_DAYMARK_PAGES_DEPLOY }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: web
           wranglerVersion: '4'
           command: pages project create styrigx-daymark --production-branch=main
 
       - name: Deploy to Cloudflare Pages
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          apiToken: ${{ secrets.STYRIGX_DAYMARK_PAGES_DEPLOY }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: web
           wranglerVersion: '4'
           command: pages deploy public --project-name=styrigx-daymark --commit-dirty=true
 
       - name: Smoke test Pages (pages behind the gateway, static files direct, pages.dev not open)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           set -u
           if ! getent hosts daymark.styrigx.com >/dev/null; then echo "domain not bound yet: skip"; exit 0; fi
