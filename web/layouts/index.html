@@ -1,41 +1,73 @@
 {{ define "main" }}
 {{ $isEn := or (eq .Lang "en") (hasPrefix .RelPermalink "/en/") }}
-{{/* 日刻首页：（快捷面板）+ 今日一句卡 + 标签筛选条 + 句子列表 + 底部搜索胶囊。
-   主人（owner）：今日卡下有「记一句」，点句子卡打开编辑弹层；访客只读、只看公开句子。
-   数据全走 daymark.styrigx.com/api/*（接口 Worker，见 workers/）。 */}}
-<main id="dm-main" class="w-full mx-auto pb-6" style="max-width:860px;padding-left:16px;padding-right:16px">
-  {{ partial "sgx-qp.html" (dict "isEn" $isEn) }}
+{{/* 日刻首页：三个页签面板（余响 · 拾录 · 百味），顶栏分段滑块切换（daymark.js）。
+   主人（owner）：拾录右下角「记一句」，点句子打开编辑弹层；百味能建专题、排序。访客只读、只看公开句子。
+   没有搜索栏、没有标签筛选条。数据全走 daymark.styrigx.com/api/*（接口 Worker，见 workers/）。 */}}
+<main id="dm-main" class="w-full mx-auto" style="max-width:860px;padding-left:16px;padding-right:16px">
+  <div id="dm-panes">
 
-  {{/* ===== 今日一句 ===== */}}
-  <section id="dm-today" class="dm-today mb-6" aria-label="{{ if $isEn }}Today{{ else }}今日一句{{ end }}">
-    <p class="dm-today-day" id="dm-today-day"></p>
-    <blockquote id="dm-today-body" class="dm-today-body"></blockquote>
-    <div id="dm-add-row" class="hidden mt-5 flex justify-center">
-      <button id="dm-add" type="button" class="inline-flex items-center gap-2 h-11 px-6 rounded-full bg-m-primary text-m-on-primary text-[15px] font-bold active:scale-[.97] transition-transform">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>{{ if $isEn }}Save a line{{ else }}记一句{{ end }}
+  {{/* ===== 余响 Echo：整屏一句 ===== */}}
+  <section id="dm-pane-echo" class="dm-pane dm-pane-echo" role="tabpanel" aria-labelledby="dm-tab-echo">
+    <article id="dm-echo" class="dm-echo" aria-live="polite">
+      <button id="dm-share" type="button" class="dm-share hidden" aria-label="{{ if $isEn }}Share{{ else }}分享{{ end }}">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3.5"/><path d="M7.5 8L12 3.5 16.5 8"/><path d="M5 12.5V19a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19v-6.5"/></svg>
       </button>
+      <p id="dm-echo-day" class="dm-echo-day"></p>
+      <div id="dm-echo-body" class="dm-echo-body"></div>
+    </article>
+    <div class="dm-echo-actions">
+      <button id="dm-draw" type="button" class="dm-btn dm-btn-tonal">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3h5v5"/><path d="M4 20L21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>{{ if $isEn }}Draw another{{ else }}再抽一句{{ end }}
+      </button>
+      <button id="dm-back-today" type="button" class="dm-btn dm-btn-outline hidden">{{ if $isEn }}Back to today{{ else }}回到今日{{ end }}</button>
     </div>
   </section>
 
-  {{/* ===== 标签筛选条 ===== */}}
-  <div id="dm-tags" class="no-scrollbar flex gap-2 overflow-x-auto whitespace-nowrap pb-3" role="tablist" aria-label="{{ if $isEn }}Filter by tag{{ else }}按标签筛选{{ end }}"></div>
+  {{/* ===== 拾录 Trove：全部句子，新的在前 ===== */}}
+  <section id="dm-pane-trove" class="dm-pane dm-pane-trove" role="tabpanel" aria-labelledby="dm-tab-trove" hidden>
+    <div id="dm-list" class="flex flex-col gap-3"></div>
+    <p id="dm-empty" class="hidden text-center py-16 text-[15px] text-m-on-surface-variant"></p>
+    <p id="dm-loading" class="text-center py-16 text-sm text-m-on-surface-variant">{{ if $isEn }}Loading…{{ else }}加载中…{{ end }}</p>
+  </section>
 
-  {{/* ===== 句子列表 ===== */}}
-  <div id="dm-list" class="flex flex-col gap-3"></div>
-  <p id="dm-no-results" class="hidden text-center py-16 text-sm text-m-on-surface-variant">{{ if $isEn }}Nothing matches.{{ else }}没有符合条件的句子。{{ end }}</p>
-  <p id="dm-empty" class="hidden text-center py-16 text-[15px] text-m-on-surface-variant"></p>
-  <p id="dm-loading" class="text-center py-16 text-sm text-m-on-surface-variant">{{ if $isEn }}Loading…{{ else }}加载中…{{ end }}</p>
+  {{/* ===== 百味 Flavors：自建专题在前，再是按作者的「人物」；点进去是该组句子（页内返回） ===== */}}
+  <section id="dm-pane-flavors" class="dm-pane dm-pane-flavors" role="tabpanel" aria-labelledby="dm-tab-flavors" hidden>
+    <div id="dm-fl-home">
+      <section id="dm-cols-sec" class="hidden mb-6" aria-labelledby="dm-cols-h">
+        <h2 id="dm-cols-h" class="dm-sec">{{ if $isEn }}Collections{{ else }}自建专题{{ end }}</h2>
+        <div id="dm-cols" class="dm-fgrid"></div>
+      </section>
+      <section id="dm-authors-sec" class="hidden" aria-labelledby="dm-authors-h">
+        <h2 id="dm-authors-h" class="dm-sec">{{ if $isEn }}People{{ else }}人物{{ end }}</h2>
+        <div id="dm-authors" class="dm-fgrid"></div>
+      </section>
+      <p id="dm-fl-empty" class="hidden text-center py-16 text-[15px] text-m-on-surface-variant"></p>
+    </div>
+    <div id="dm-fl-group" class="hidden">
+      <div class="dm-g-bar">
+        <button id="dm-fl-back" type="button" class="dm-back"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>{{ if $isEn }}Flavors{{ else }}百味{{ end }}</button>
+        <div id="dm-g-tools" class="hidden dm-g-tools">
+          <button id="dm-g-del" type="button" class="dm-btn-text dm-btn-danger hidden">{{ if $isEn }}Delete{{ else }}删除专题{{ end }}</button>
+          <button id="dm-g-edit" type="button" class="dm-btn-text" aria-pressed="false"></button>
+        </div>
+      </div>
+      <header class="dm-g-head">
+        <h2 id="dm-g-title" class="dm-g-title"></h2>
+        <p id="dm-g-intro" class="dm-g-intro hidden"></p>
+        <p id="dm-g-count" class="dm-g-count"></p>
+      </header>
+      <div id="dm-g-list" class="flex flex-col gap-3"></div>
+      <p id="dm-g-empty" class="hidden text-center py-12 text-[15px] text-m-on-surface-variant"></p>
+    </div>
+  </section>
+
+  </div>
 </main>
-<style>body:has(#bk-cap) footer{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}</style>
 
-{{/* ===== 底部搜索胶囊（键盘跟随 + 语音，capsule-kb.js 接管） ===== */}}
-<div id="bk-cap" class="bk-cap" role="search">
-  <svg class="bk-cap-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-  <input id="bk-cap-input" type="search" autocomplete="off" enterkeyhint="search" placeholder="{{ if $isEn }}Search lines, authors{{ else }}搜索句子、作者{{ end }}" aria-label="{{ if $isEn }}Search{{ else }}搜索{{ end }}">
-  <button type="button" class="bk-cap-mic" data-mic aria-label="{{ if $isEn }}Voice search{{ else }}语音搜索{{ end }}" style="display:none">
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 15a3.5 3.5 0 0 0 3.5-3.5v-5a3.5 3.5 0 1 0-7 0v5A3.5 3.5 0 0 0 12 15zm6-3.5a6 6 0 0 1-12 0H4a8 8 0 0 0 7 7.94V22h2v-2.06A8 8 0 0 0 20 11.5h-2z"/></svg>
-  </button>
-</div>
+{{/* ===== 拾录：记一句（主人，右下角浮动按钮） ===== */}}
+<button id="dm-fab" type="button" class="dm-fab hidden">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>{{ if $isEn }}Save a line{{ else }}记一句{{ end }}
+</button>
 
 {{/* ===== 记一句 / 编辑弹层（主人） ===== */}}
 <div id="edit-wrap" class="bk-overlay fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="edit-title">
@@ -48,17 +80,43 @@
       <div class="bk-titlebar-side"><button type="button" class="bk-icbtn" data-close="edit" aria-label="{{ if $isEn }}Close{{ else }}关闭{{ end }}">{{ partial "icon.html" (dict "name" "x-mark" "uid" "edit-x") }}</button></div>
     </div>
     <form id="edit-form" class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pb-4 flex flex-col gap-4" novalidate>
-      <label class="dm-field"><span>{{ if $isEn }}The line{{ else }}句子{{ end }}</span>
-        <textarea id="f-text" rows="4" maxlength="500" required placeholder="{{ if $isEn }}What's worth keeping today?{{ else }}今天想留下哪一句？{{ end }}"></textarea></label>
-      <label class="dm-field"><span>{{ if $isEn }}Translation (optional){{ else }}译文（可不填）{{ end }}</span>
-        <textarea id="f-trans" rows="2" maxlength="500"></textarea></label>
-      <div class="grid grid-cols-2 gap-3">
-        <label class="dm-field"><span>{{ if $isEn }}Author{{ else }}作者{{ end }}</span><input id="f-author" type="text" maxlength="60" autocomplete="off"></label>
-        <label class="dm-field"><span>{{ if $isEn }}Source{{ else }}出处{{ end }}</span><input id="f-source" type="text" maxlength="120" autocomplete="off"></label>
+      {{/* 实时预览：和余响里一样的样子 */}}
+      <div id="ed-preview" class="dm-preview" aria-label="{{ if $isEn }}Preview{{ else }}预览{{ end }}">
+        <p class="dm-preview-label">{{ if $isEn }}Preview · Echo{{ else }}预览 · 余响{{ end }}</p>
+        <div id="ed-preview-body" class="dm-echo-body"></div>
       </div>
-      <label class="dm-field"><span>{{ if $isEn }}Tags (comma separated){{ else }}标签（逗号或空格分开）{{ end }}</span><input id="f-tags" type="text" maxlength="200" autocomplete="off"></label>
+      <label class="dm-field"><span>{{ if $isEn }}The line{{ else }}句子{{ end }}</span>
+        <textarea id="f-text" class="dm-serif-input" rows="4" maxlength="500" required placeholder="{{ if $isEn }}What's worth keeping today?{{ else }}今天想留下哪一句？{{ end }}"></textarea></label>
+      <button id="f-trans-toggle" type="button" class="dm-addlink">＋ {{ if $isEn }}Add translation{{ else }}加译文{{ end }}</button>
+      <label id="f-trans-wrap" class="dm-field hidden"><span>{{ if $isEn }}Translation{{ else }}译文{{ end }}</span>
+        <textarea id="f-trans" rows="2" maxlength="500"></textarea></label>
+      <div class="dm-field">
+        <label for="f-author">{{ if $isEn }}Author{{ else }}作者{{ end }}</label>
+        <div class="dm-ac"><input id="f-author" type="text" maxlength="60" autocomplete="off" placeholder="{{ if $isEn }}Who said it{{ else }}谁说的{{ end }}"><div id="f-author-ac" class="dm-ac-list hidden" role="listbox"></div></div>
+        <div id="f-author-recent" class="dm-chips hidden" aria-label="{{ if $isEn }}Recent authors{{ else }}最近的作者{{ end }}"></div>
+      </div>
+      <div class="dm-field">
+        <label for="f-source">{{ if $isEn }}Source{{ else }}出处{{ end }}</label>
+        <div id="f-stype" class="dm-chips" role="group" aria-label="{{ if $isEn }}Source type{{ else }}出处类型{{ end }}"></div>
+        <div class="dm-ac"><input id="f-source" type="text" maxlength="120" autocomplete="off" placeholder="{{ if $isEn }}Title{{ else }}名字，比如书名、片名{{ end }}"><div id="f-source-ac" class="dm-ac-list hidden" role="listbox"></div></div>
+      </div>
+      <div class="dm-field">
+        <span>{{ if $isEn }}Add to Flavors{{ else }}归入百味{{ end }}</span>
+        <div id="f-cols" class="dm-chips" role="group" aria-label="{{ if $isEn }}Collections{{ else }}自建专题{{ end }}"></div>
+        <div id="f-col-new-row" class="dm-inline hidden">
+          <input id="f-col-name" type="text" maxlength="30" autocomplete="off" placeholder="{{ if $isEn }}Collection name{{ else }}专题名{{ end }}">
+          <button id="f-col-add" type="button" class="dm-btn-text">{{ if $isEn }}Add{{ else }}添加{{ end }}</button>
+        </div>
+      </div>
+      <div class="dm-field">
+        <label for="f-tag-input">{{ if $isEn }}Tags{{ else }}标签{{ end }}</label>
+        <div id="f-tagbox" class="dm-tagbox"><span id="f-tagchips" class="contents"></span><input id="f-tag-input" type="text" maxlength="40" autocomplete="off" enterkeyhint="done" placeholder="{{ if $isEn }}Type, then Enter{{ else }}输入后回车或逗号{{ end }}"></div>
+        <div id="f-tag-sugg" class="dm-chips hidden" aria-label="{{ if $isEn }}Existing tags{{ else }}已有标签{{ end }}"></div>
+      </div>
+      <label class="dm-field"><span>{{ if $isEn }}A quick note{{ else }}随手一笔{{ end }} <em class="dm-hint">{{ if $isEn }}only you can see this{{ else }}只有你看得到{{ end }}</em></span>
+        <textarea id="f-note" rows="2" maxlength="500" placeholder="{{ if $isEn }}Where you met it, why it stayed{{ else }}在哪读到的、为什么记下{{ end }}"></textarea></label>
       <label class="flex items-center gap-3 cursor-pointer">
-        <span class="flex-1 text-[15px]">{{ if $isEn }}Public to visitors{{ else }}公开给访客{{ end }}</span>
+        <span class="flex-1 text-[15px]">{{ if $isEn }}Public{{ else }}公开{{ end }}</span>
         <input id="f-public" type="checkbox" class="peer sr-only" checked>
         <span class="shrink-0 w-12 h-7 rounded-full bg-m-container peer-checked:bg-m-primary relative transition-colors after:content-[''] after:absolute after:top-1 after:left-1 after:w-5 after:h-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5"></span>
       </label>
@@ -71,15 +129,34 @@
   </div>
 </div>
 
-{{/* ===== 删除确认 ===== */}}
-<div id="confirm-wrap" class="bk-overlay fixed inset-0 z-[70]" role="alertdialog" aria-modal="true" aria-label="{{ if $isEn }}Confirm{{ else }}确认{{ end }}">
+{{/* ===== 新建专题（百味里的「＋ 新建」卡） ===== */}}
+<div id="col-wrap" class="bk-overlay fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-labelledby="col-title">
+  <div class="bk-overlay-backdrop absolute inset-0 bg-black/40" data-close="col"></div>
+  <div class="bk-panel bk-dialog bg-m-container-lowest text-m-on-surface shadow-2xl">
+    <div class="sheet-handle"></div>
+    <div class="bk-titlebar">
+      <div class="bk-titlebar-side" aria-hidden="true"></div>
+      <div class="bk-titlebar-mid"><h2 id="col-title" class="text-lg font-extrabold">{{ if $isEn }}New collection{{ else }}新建专题{{ end }}</h2></div>
+      <div class="bk-titlebar-side"><button type="button" class="bk-icbtn" data-close="col" aria-label="{{ if $isEn }}Close{{ else }}关闭{{ end }}">{{ partial "icon.html" (dict "name" "x-mark" "uid" "col-x") }}</button></div>
+    </div>
+    <div class="px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] flex flex-col gap-4">
+      <label class="dm-field"><span>{{ if $isEn }}Name{{ else }}名字{{ end }}</span><input id="c-name" type="text" maxlength="30" autocomplete="off"></label>
+      <label class="dm-field"><span>{{ if $isEn }}One-line intro{{ else }}一句话简介{{ end }}</span><input id="c-intro" type="text" maxlength="80" autocomplete="off"></label>
+      <p id="col-err" class="hidden text-sm text-m-error"></p>
+      <button id="col-save" type="button" class="h-12 rounded-full bg-m-primary text-m-on-primary text-[15px] font-bold">{{ if $isEn }}Create{{ else }}建好了{{ end }}</button>
+    </div>
+  </div>
+</div>
+
+{{/* ===== 确认（删句子 / 删专题） ===== */}}
+<div id="confirm-wrap" class="bk-overlay fixed inset-0 z-[70]" role="alertdialog" aria-modal="true" aria-labelledby="confirm-msg">
   <div class="bk-overlay-backdrop absolute inset-0 bg-black/40" data-close="confirm"></div>
   <div class="bk-panel bk-dialog bg-m-container-lowest text-m-on-surface shadow-2xl">
-    <div class="px-6 pt-6 pb-5">
-      <p class="text-[15px] leading-relaxed text-center">{{ if $isEn }}Delete this line? This cannot be undone.{{ else }}确定删除这一句吗？删除后无法恢复。{{ end }}</p>
+    <div class="px-6 pt-6 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+      <p id="confirm-msg" class="text-[15px] leading-relaxed text-center"></p>
       <div class="flex gap-3 mt-5">
         <button id="confirm-cancel" type="button" class="flex-1 h-12 rounded-full bg-m-container text-m-on-surface text-[15px] font-bold">{{ if $isEn }}Cancel{{ else }}取消{{ end }}</button>
-        <button id="confirm-ok" type="button" class="flex-1 h-12 rounded-full bg-m-error text-m-on-error text-[15px] font-bold">{{ if $isEn }}Delete{{ else }}删除{{ end }}</button>
+        <button id="confirm-ok" type="button" class="flex-1 h-12 rounded-full bg-m-error text-m-on-error text-[15px] font-bold"></button>
       </div>
     </div>
   </div>
@@ -89,8 +166,5 @@
 {{ end }}
 
 {{ define "pagejs" }}
-{{ $isEn := or (eq .Lang "en") (hasPrefix .RelPermalink "/en/") }}
-<script type="module" src="{{ (resources.Get "js/sgx/entry.js" | js.Build | minify | fingerprint).RelPermalink }}"></script>
-<script id="sgx-i18n-core" type="application/json">{"vsAria":{"zh":"语音输入","en":"Voice input"},"vsClose":{"zh":"关闭","en":"Close"},"vsSpeak":{"zh":"立即说出","en":"Speak now"},"vsLang":{"zh":"中文（中国）","en":"English (US)"},"vsNoPerm":{"zh":"需要麦克风权限","en":"Microphone permission needed"},"vsRetry":{"zh":"没听清，点麦克风重试","en":"Didn't catch that, tap the mic to retry"}}</script>
 <script src="{{ (resources.Get "js/daymark.js" | minify | fingerprint).RelPermalink }}"></script>
 {{ end }}
