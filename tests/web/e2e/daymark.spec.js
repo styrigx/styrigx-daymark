@@ -66,11 +66,13 @@ test('访客：顶栏三页签、没有搜索栏和快捷面板；抽屉同主�
   await expect(page.locator('#dm-echo-body')).toContainText('鲁迅 · 《故乡》');
   await expect(page.locator('#dm-share')).toBeVisible();
   await page.locator('.sgx-tb-nav').click();
-  await expect(page.locator('#sgx-drawer .sgx-drawer-item')).toHaveText(['首页', '书签', '日刻', '博客', '设置']);
+  await expect(page.locator('#sgx-drawer .sgx-drawer-item')).toHaveText(['首页', '奇趣', '日刻', '博客']);
   await expect(page.locator('#sgx-drawer [data-nav="daymark"]')).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('#sgx-drawer [data-nav="daymark"]')).toHaveAttribute('href', '/');
-  await expect(page.locator('#sgx-drawer [data-nav="settings"]')).toHaveAttribute('href', 'https://styrigx.com/settings/');
-  await expect(page.locator('#sgx-drawer hr.sgx-drawer-div')).toHaveCount(1);
+  /* 同主站：头部头像去主站账号页，导航项下一条分隔线，底栏搜索框去主站搜索 */
+  await expect(page.locator('#sgx-drawer .sgx-drawer-me')).toHaveAttribute('href', 'https://styrigx.com/settings/account/');
+  await expect(page.locator('#sgx-drawer hr.sgx-drawer-sep')).toHaveCount(1);
+  await expect(page.locator('#sgx-drawer .sgx-drawer-search')).toHaveAttribute('href', 'https://styrigx.com/search/');
   /* 主站同款：毛玻璃面板、tonal 当前项、宽度 = 412 − 16 − 78 − 8 − 20 = 290（视口 412 时） */
   const st = await page.evaluate(() => {
     const probe = (v) => { const i = document.createElement('i'); i.style.color = `var(${v})`; document.body.appendChild(i); const c = getComputedStyle(i).color; i.remove(); return c; };

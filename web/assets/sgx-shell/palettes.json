@@ -1,85 +1,238 @@
 {
   "_generated": "styrigx-space scripts/gen-shell.mjs ← web/data/palette-roles.json；勿手改",
   "default": "lake",
-  "schemeVersion": "0bee0d8370d3",
+  "schemeVersion": "ab6d347b23dc",
   "presets": [
     {
       "id": "lake",
       "zh": "默认",
       "en": "Default",
-      "seed": "#2f5f86"
+      "seed": "#2f5f86",
+      "group": "mono"
     },
     {
       "id": "forest",
       "zh": "山绿",
       "en": "Forest",
-      "seed": "#2f6b4f"
+      "seed": "#2f6b4f",
+      "group": "mono"
     },
     {
       "id": "terra",
       "zh": "陶土",
       "en": "Terracotta",
-      "seed": "#8a4b2d"
+      "seed": "#8a4b2d",
+      "group": "mono"
     },
     {
       "id": "violet",
       "zh": "紫",
       "en": "Violet",
-      "seed": "#6750a4"
+      "seed": "#6750a4",
+      "group": "mono"
     },
     {
       "id": "rose",
       "zh": "蔷薇",
       "en": "Rose",
-      "seed": "#984061"
+      "seed": "#984061",
+      "group": "mono"
     },
     {
       "id": "cherry",
       "zh": "樱桃",
       "en": "Cherry",
-      "seed": "#ba1a20"
+      "seed": "#ba1a20",
+      "group": "mono"
     },
     {
       "id": "tangerine",
       "zh": "橘子",
       "en": "Tangerine",
-      "seed": "#b02e00"
+      "seed": "#b02e00",
+      "group": "mono"
     },
     {
       "id": "amber",
       "zh": "琥珀",
       "en": "Amber",
-      "seed": "#825500"
+      "seed": "#825500",
+      "group": "mono"
     },
     {
       "id": "matcha",
       "zh": "抹茶",
       "en": "Matcha",
-      "seed": "#3c6a00"
+      "seed": "#3c6a00",
+      "group": "mono"
     },
     {
       "id": "teal",
       "zh": "青碧",
       "en": "Teal",
-      "seed": "#00696b"
+      "seed": "#00696b",
+      "group": "mono"
     },
     {
       "id": "indigo",
       "zh": "靛蓝",
       "en": "Indigo",
-      "seed": "#3d4fd3"
+      "seed": "#3d4fd3",
+      "group": "mono"
     },
     {
       "id": "orchid",
       "zh": "兰紫",
       "en": "Orchid",
-      "seed": "#a62092"
+      "seed": "#a62092",
+      "group": "mono"
+    },
+    {
+      "id": "dustyblue",
+      "zh": "雾霾蓝",
+      "en": "Dusty Blue",
+      "seed": "#78909c",
+      "group": "mono"
+    },
+    {
+      "id": "mustard",
+      "zh": "芥末黄",
+      "en": "Mustard",
+      "seed": "#d4a72c",
+      "group": "mono"
+    },
+    {
+      "id": "sage",
+      "zh": "鼠尾草绿",
+      "en": "Sage",
+      "seed": "#9caf88",
+      "group": "mono"
+    },
+    {
+      "id": "dustyrose",
+      "zh": "干枯玫瑰",
+      "en": "Dusty Rose",
+      "seed": "#d8a7a7",
+      "group": "mono"
     },
     {
       "id": "graphite",
       "zh": "石墨",
       "en": "Graphite",
-      "seed": "#5e5e5e"
+      "seed": "#5e5e5e",
+      "group": "mono"
+    },
+    {
+      "id": "xforest",
+      "zh": "山绿×橘子",
+      "en": "Forest × Tangerine",
+      "seed": "#2f6b4f",
+      "group": "clash"
+    },
+    {
+      "id": "xterra",
+      "zh": "陶土×鼠尾草",
+      "en": "Terracotta × Sage",
+      "seed": "#8a4b2d",
+      "group": "clash"
+    },
+    {
+      "id": "xviolet",
+      "zh": "紫×蔷薇",
+      "en": "Violet × Rose",
+      "seed": "#6750a4",
+      "group": "clash"
+    },
+    {
+      "id": "xrose",
+      "zh": "蔷薇×杏",
+      "en": "Rose × Apricot",
+      "seed": "#984061",
+      "group": "clash"
+    },
+    {
+      "id": "xcherry",
+      "zh": "樱桃×嫩叶",
+      "en": "Cherry × Leaf",
+      "seed": "#ba1a20",
+      "group": "clash"
+    },
+    {
+      "id": "xtangerine",
+      "zh": "橘子×海蓝",
+      "en": "Tangerine × Sea Blue",
+      "seed": "#b02e00",
+      "group": "clash"
+    },
+    {
+      "id": "xamber",
+      "zh": "琥珀×梅子",
+      "en": "Amber × Plum",
+      "seed": "#825500",
+      "group": "clash"
+    },
+    {
+      "id": "xmatcha",
+      "zh": "抹茶×焙茶",
+      "en": "Matcha × Hojicha",
+      "seed": "#3c6a00",
+      "group": "clash"
+    },
+    {
+      "id": "xteal",
+      "zh": "青碧×樱桃",
+      "en": "Teal × Cherry",
+      "seed": "#00696b",
+      "group": "clash"
+    },
+    {
+      "id": "xindigo",
+      "zh": "靛蓝×霓虹粉",
+      "en": "Indigo × Neon Pink",
+      "seed": "#3d4fd3",
+      "group": "clash"
+    },
+    {
+      "id": "xorchid",
+      "zh": "兰紫×石板灰",
+      "en": "Orchid × Slate",
+      "seed": "#a62092",
+      "group": "clash"
+    },
+    {
+      "id": "xdustyblue",
+      "zh": "雾霾蓝×芥末黄",
+      "en": "Dusty Blue × Mustard",
+      "seed": "#78909c",
+      "group": "clash"
+    },
+    {
+      "id": "xmustard",
+      "zh": "芥末黄×雾霾蓝",
+      "en": "Mustard × Dusty Blue",
+      "seed": "#d4a72c",
+      "group": "clash"
+    },
+    {
+      "id": "xsage",
+      "zh": "鼠尾草绿×干枯玫瑰",
+      "en": "Sage × Dusty Rose",
+      "seed": "#9caf88",
+      "group": "clash"
+    },
+    {
+      "id": "xdustyrose",
+      "zh": "干枯玫瑰×鼠尾草绿",
+      "en": "Dusty Rose × Sage",
+      "seed": "#d8a7a7",
+      "group": "clash"
+    },
+    {
+      "id": "xgraphite",
+      "zh": "石墨×湖蓝",
+      "en": "Graphite × Lake Blue",
+      "seed": "#5e5e5e",
+      "group": "clash"
     }
   ]
 }

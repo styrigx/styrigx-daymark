@@ -32,14 +32,20 @@ test('没有搜索、快捷面板、页名；也没有标签筛选条', () => {
   assert.doesNotMatch(css, /\.bk-cap|\.sgx-qp/);
 });
 
-test('抽屉：主站共享外壳的 nav.json（首页 / 书签 / 日刻 / 博客 + 分隔线 + 设置），模板不写死项', () => {
+test('抽屉：主站共享外壳的 nav.json（首页 / 奇趣 / 日刻 / 博客），模板不写死项；结构同主站', () => {
   const nav = JSON.parse(readFileSync(path.join(REPO, 'web/assets/sgx-shell/nav.json'), 'utf8'));
-  assert.deepEqual(nav.items.map((i) => i.zh), ['首页', '书签', '日刻', '博客']);
-  assert.deepEqual(nav.footer.map((i) => i.zh), ['设置']);
+  assert.deepEqual(nav.items.map((i) => i.zh), ['首页', '奇趣', '日刻', '博客']);
+  assert.deepEqual(nav.footer, []);
+  assert.equal(nav.me.href, 'https://styrigx.com/settings/account/');
   const drawer = base.slice(base.indexOf('<dialog id="sgx-drawer"'), base.indexOf('</dialog>'));
   assert.match(drawer, /range \$shellNav\.items/);
-  assert.match(drawer, /range \$shellNav\.footer/);
-  assert.match(drawer, /<hr class="sgx-drawer-div">/);
+  assert.match(drawer, /with \$shellNav\.footer/);
+  /* 和主站同一结构（2026-10-22）：头部字标 + 头像（链主站账号页），导航项下一条分隔线，底栏搜索框 */
+  assert.match(drawer, /class="sgx-drawer-head"><span class="sgx-drawer-brand">\{\{ \$shellNav\.wordmark \| safeHTML \}\}/);
+  assert.match(drawer, /<a class="sgx-drawer-me" href="\{\{ \$me \}\}"/);
+  assert.match(drawer, /<hr class="sgx-drawer-sep" aria-hidden="true">/);
+  assert.match(drawer, /<div class="sgx-drawer-foot"><a class="sgx-drawer-search"/);
+  assert.match(drawer, /eq \.id "daymark"/);
   assert.doesNotMatch(drawer, /主页|书库/);
 });
 
