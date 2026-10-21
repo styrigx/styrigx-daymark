@@ -43,6 +43,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Shared shell in sync with main site (scripts/sync-shell.mjs --check)
+        # 色彩角色 / 顶栏材质 / 导航抽屉 / 自定义主题色引擎来自主站 styrigx-space web/shared/shell，主站是唯一来源：
+        # 副本被手改，或主站 main 上的外壳版本变了没同步 → 红（修法：node scripts/sync-shell.mjs）
+        run: node scripts/sync-shell.mjs --check
+
       - name: Build CSS
         run: npm run build:css
 

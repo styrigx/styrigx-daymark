@@ -56,7 +56,7 @@ async function mock(page, owner) {
   return calls;
 }
 
-test('访客：顶栏三页签、没有搜索栏和快捷面板；抽屉四个应用；余响今日一句', async ({ page }) => {
+test('访客：顶栏三页签、没有搜索栏和快捷面板；抽屉同主站（四个应用 + 设置）；余响今日一句', async ({ page }) => {
   await mock(page, false);
   await page.goto('/');
   await expect(page.locator('[data-dm-tab]')).toHaveText(['余响', '拾录', '百味']);
@@ -66,10 +66,21 @@ test('访客：顶栏三页签、没有搜索栏和快捷面板；抽屉四个�
   await expect(page.locator('#dm-echo-body')).toContainText('鲁迅 · 《故乡》');
   await expect(page.locator('#dm-share')).toBeVisible();
   await page.locator('.sgx-tb-nav').click();
-  await expect(page.locator('#sgx-drawer .sgx-drawer-item')).toHaveText(['主页', '书签', '日刻', '博客']);
+  await expect(page.locator('#sgx-drawer .sgx-drawer-item')).toHaveText(['首页', '书签', '日刻', '博客', '设置']);
   await expect(page.locator('#sgx-drawer [data-nav="daymark"]')).toHaveAttribute('aria-current', 'page');
-  await expect(page.locator('#sgx-drawer')).not.toContainText('设置');
-  await expect(page.locator('#sgx-drawer hr')).toHaveCount(0);
+  await expect(page.locator('#sgx-drawer [data-nav="daymark"]')).toHaveAttribute('href', '/');
+  await expect(page.locator('#sgx-drawer [data-nav="settings"]')).toHaveAttribute('href', 'https://styrigx.com/settings/');
+  await expect(page.locator('#sgx-drawer hr.sgx-drawer-div')).toHaveCount(1);
+  /* 主站同款：毛玻璃面板、tonal 当前项、宽度 = 412 − 16 − 78 − 8 − 20 = 290（视口 412 时） */
+  const st = await page.evaluate(() => {
+    const probe = (v) => { const i = document.createElement('i'); i.style.color = `var(${v})`; document.body.appendChild(i); const c = getComputedStyle(i).color; i.remove(); return c; };
+    const cur = getComputedStyle(document.querySelector('#sgx-drawer [aria-current="page"]'));
+    const sh = document.querySelector('.sgx-drawer-sheet');
+    return { bg: cur.backgroundColor, tonal: probe('--sgx-nav-selected'), filter: getComputedStyle(sh).backdropFilter, w: sh.getBoundingClientRect().width, vw: innerWidth };
+  });
+  expect(st.bg).toBe(st.tonal);
+  expect(st.filter).toContain('blur(24px)');
+  expect(Math.round(st.w)).toBe(Math.round(st.vw - 16 - 78 - 8 - 20));
 });
 
 test('页签：点了改 hash，#trove / #flavors 直达；英文页 Echo / Trove / Flavors', async ({ page }) => {
@@ -261,4 +272,30 @@ test('百味 · 访客：没有新建；专题里只显示看得到的句子', a
   await expect(page.locator('#dm-g-tools')).toBeHidden();
   await page.locator('#dm-fl-back').click();
   await expect(page.locator('#dm-col-new')).toHaveCount(0);
+});
+
+test('主题跟主站 sgx-ui cookie：pal 换预设；accent 是自定义种子 → 按需加载共享外壳引擎算整套角色，第二次首帧直接用缓存', async ({ page, context, baseURL }) => {
+  await mock(page, false);
+  const enc = (o) => Buffer.from(JSON.stringify(o)).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const set = (ui) => context.addCookies([{ name: 'sgx-ui', value: enc(ui), url: baseURL }]);
+  const ind = () => page.evaluate(() => getComputedStyle(document.querySelector('.sgx-seg-ind')).backgroundColor);
+  await page.goto('/');
+  const lake = await ind();
+  await set({ v: 2, mode: 'dark', pal: 'matcha', accent: '#3c6a00' });
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-palette', 'matcha');
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  await expect(page.locator('#sgx-accent-roles')).toHaveCount(0);
+  expect(await ind()).not.toBe(lake);
+  await set({ v: 2, mode: 'light', pal: 'lake', accent: '#ff8800' });
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-sgx-seed', '#ff8800');
+  await expect(page.locator('#sgx-accent-roles')).toHaveCount(1);
+  const custom = await ind();
+  expect(custom).not.toBe(lake);
+  /* 第二次：缓存命中，不再加载引擎脚本 */
+  await page.reload();
+  await expect(page.locator('#sgx-accent-roles')).toHaveCount(1);
+  await expect(page.locator('#sgx-accent-js')).toHaveCount(0);
+  expect(await ind()).toBe(custom);
 });

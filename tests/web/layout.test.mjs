@@ -32,12 +32,15 @@ test('没有搜索、快捷面板、页名；也没有标签筛选条', () => {
   assert.doesNotMatch(css, /\.bk-cap|\.sgx-qp/);
 });
 
-test('抽屉：只有 主页 / 书签 / 日刻 / 博客，没有设置、没有底部区', () => {
-  const items = [...base.matchAll(/\(dict "id" "([a-z]+)" "icon" "nav-[a-z]+" "zh" "([^"]+)"/g)].map((m) => m[2]);
-  assert.deepEqual(items, ['主页', '书签', '日刻', '博客']);
+test('抽屉：主站共享外壳的 nav.json（首页 / 书签 / 日刻 / 博客 + 分隔线 + 设置），模板不写死项', () => {
+  const nav = JSON.parse(readFileSync(path.join(REPO, 'web/assets/sgx-shell/nav.json'), 'utf8'));
+  assert.deepEqual(nav.items.map((i) => i.zh), ['首页', '书签', '日刻', '博客']);
+  assert.deepEqual(nav.footer.map((i) => i.zh), ['设置']);
   const drawer = base.slice(base.indexOf('<dialog id="sgx-drawer"'), base.indexOf('</dialog>'));
-  assert.doesNotMatch(drawer, /settings|设置|sgx-drawer-div|<hr/);
-  assert.equal((drawer.match(/<ul /g) || []).length, 1);
+  assert.match(drawer, /range \$shellNav\.items/);
+  assert.match(drawer, /range \$shellNav\.footer/);
+  assert.match(drawer, /<hr class="sgx-drawer-div">/);
+  assert.doesNotMatch(drawer, /主页|书库/);
 });
 
 test('首页三块面板 + 记一句弹层的各个部件都在', () => {

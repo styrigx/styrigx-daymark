@@ -1,0 +1,85 @@
+{
+  "_generated": "styrigx-space scripts/gen-shell.mjs ← web/data/palette-roles.json；勿手改",
+  "default": "lake",
+  "schemeVersion": "0bee0d8370d3",
+  "presets": [
+    {
+      "id": "lake",
+      "zh": "默认",
+      "en": "Default",
+      "seed": "#2f5f86"
+    },
+    {
+      "id": "forest",
+      "zh": "山绿",
+      "en": "Forest",
+      "seed": "#2f6b4f"
+    },
+    {
+      "id": "terra",
+      "zh": "陶土",
+      "en": "Terracotta",
+      "seed": "#8a4b2d"
+    },
+    {
+      "id": "violet",
+      "zh": "紫",
+      "en": "Violet",
+      "seed": "#6750a4"
+    },
+    {
+      "id": "rose",
+      "zh": "蔷薇",
+      "en": "Rose",
+      "seed": "#984061"
+    },
+    {
+      "id": "cherry",
+      "zh": "樱桃",
+      "en": "Cherry",
+      "seed": "#ba1a20"
+    },
+    {
+      "id": "tangerine",
+      "zh": "橘子",
+      "en": "Tangerine",
+      "seed": "#b02e00"
+    },
+    {
+      "id": "amber",
+      "zh": "琥珀",
+      "en": "Amber",
+      "seed": "#825500"
+    },
+    {
+      "id": "matcha",
+      "zh": "抹茶",
+      "en": "Matcha",
+      "seed": "#3c6a00"
+    },
+    {
+      "id": "teal",
+      "zh": "青碧",
+      "en": "Teal",
+      "seed": "#00696b"
+    },
+    {
+      "id": "indigo",
+      "zh": "靛蓝",
+      "en": "Indigo",
+      "seed": "#3d4fd3"
+    },
+    {
+      "id": "orchid",
+      "zh": "兰紫",
+      "en": "Orchid",
+      "seed": "#a62092"
+    },
+    {
+      "id": "graphite",
+      "zh": "石墨",
+      "en": "Graphite",
+      "seed": "#5e5e5e"
+    }
+  ]
+}

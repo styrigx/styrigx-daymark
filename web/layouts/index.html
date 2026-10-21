@@ -71,8 +71,8 @@
 
 {{/* ===== 记一句 / 编辑弹层（主人） ===== */}}
 <div id="edit-wrap" class="bk-overlay fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="edit-title">
-  <div class="bk-overlay-backdrop absolute inset-0 bg-black/40" data-close="edit"></div>
-  <div class="bk-panel bg-m-container-lowest text-m-on-surface shadow-2xl">
+  <div class="bk-overlay-backdrop absolute inset-0" data-close="edit"></div>
+  <div class="bk-panel text-m-on-surface shadow-2xl">
     <div class="sheet-handle"></div>
     <div class="bk-titlebar">
       <div class="bk-titlebar-side" aria-hidden="true"></div>
@@ -118,11 +118,11 @@
       <label class="flex items-center gap-3 cursor-pointer">
         <span class="flex-1 text-[15px]">{{ if $isEn }}Public{{ else }}公开{{ end }}</span>
         <input id="f-public" type="checkbox" class="peer sr-only" checked>
-        <span class="shrink-0 w-12 h-7 rounded-full bg-m-container peer-checked:bg-m-primary relative transition-colors after:content-[''] after:absolute after:top-1 after:left-1 after:w-5 after:h-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5"></span>
+        <span class="shrink-0 w-12 h-7 rounded-full bg-[var(--sgx-switch-track-off)] peer-checked:bg-[var(--sgx-switch-track-on)] relative transition-colors after:content-[''] after:absolute after:top-1 after:left-1 after:w-5 after:h-5 after:rounded-full after:bg-[var(--sgx-switch-thumb-off)] peer-checked:after:bg-[var(--sgx-switch-thumb-on)] after:shadow after:transition-transform peer-checked:after:translate-x-5"></span>
       </label>
       <p id="edit-err" class="hidden text-sm text-m-error"></p>
     </form>
-    <div class="shrink-0 px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-m-outline/30 bg-m-container-lowest flex gap-3">
+    <div class="shrink-0 px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-[var(--sgx-divider)] flex gap-3">
       <button id="edit-del" type="button" class="hidden flex-1 h-12 rounded-full bg-m-container text-m-error text-[15px] font-bold">{{ if $isEn }}Delete{{ else }}删除{{ end }}</button>
       <button id="edit-save" type="button" class="flex-1 h-12 rounded-full bg-m-primary text-m-on-primary text-[15px] font-bold">{{ if $isEn }}Save{{ else }}保存{{ end }}</button>
     </div>
@@ -131,8 +131,8 @@
 
 {{/* ===== 新建专题（百味里的「＋ 新建」卡） ===== */}}
 <div id="col-wrap" class="bk-overlay fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-labelledby="col-title">
-  <div class="bk-overlay-backdrop absolute inset-0 bg-black/40" data-close="col"></div>
-  <div class="bk-panel bk-dialog bg-m-container-lowest text-m-on-surface shadow-2xl">
+  <div class="bk-overlay-backdrop absolute inset-0" data-close="col"></div>
+  <div class="bk-panel bk-dialog text-m-on-surface shadow-2xl">
     <div class="sheet-handle"></div>
     <div class="bk-titlebar">
       <div class="bk-titlebar-side" aria-hidden="true"></div>
@@ -150,8 +150,8 @@
 
 {{/* ===== 确认（删句子 / 删专题） ===== */}}
 <div id="confirm-wrap" class="bk-overlay fixed inset-0 z-[70]" role="alertdialog" aria-modal="true" aria-labelledby="confirm-msg">
-  <div class="bk-overlay-backdrop absolute inset-0 bg-black/40" data-close="confirm"></div>
-  <div class="bk-panel bk-dialog bg-m-container-lowest text-m-on-surface shadow-2xl">
+  <div class="bk-overlay-backdrop absolute inset-0" data-close="confirm"></div>
+  <div class="bk-panel bk-dialog text-m-on-surface shadow-2xl">
     <div class="px-6 pt-6 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
       <p id="confirm-msg" class="text-[15px] leading-relaxed text-center"></p>
       <div class="flex gap-3 mt-5">
