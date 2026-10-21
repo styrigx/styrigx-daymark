@@ -211,5 +211,10 @@ jobs:
           code=$(printf '%s' "$hdr" | sed -n 's/^HTTP_CODE://p')
           loc=$(printf '%s' "$hdr" | awk -F': ' 'tolower($1)=="location"{print $2}')
           echo "pages.dev / -> $code $loc"
-          [ "$code $loc" = "301 https://daymark.styrigx.com/" ] || { echo "::error::pages.dev did not redirect to daymark.styrigx.com"; ok=1; }
+          # pages.dev 不得公开：要么被 Zero Trust Access 拦（302 到 styrigx.cloudflareaccess.com，2026-10-21 起），要么 301 到正式域名
+          case "$code $loc" in
+            "301 https://daymark.styrigx.com/") ;;
+            "302 https://styrigx.cloudflareaccess.com/cdn-cgi/access/login/styrigx-daymark.pages.dev"*) ;;
+            *) echo "::error::pages.dev is neither behind Cloudflare Access nor redirected to daymark.styrigx.com"; ok=1 ;;
+          esac
           exit $ok
