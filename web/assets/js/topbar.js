@@ -1,7 +1,7 @@
 /**
  * 顶栏（沉浸式 app，同博客 BlogTopNav）：这里只管导航抽屉；长条里的分段滑块（余响 · 拾录 · 百味）由 daymark.js 管。
  * - 抽屉（#sgx-drawer，<dialog> 模态）：九宫格打开；点遮罩 / 系统返回 / Esc 关闭。
- *   打开时 push 一条同 URL 的历史哨兵，系统返回只关抽屉不离开页面；点当前项（日刻）只关抽屉，其他项关完再跳转。
+ *   打开时 push 一条同 URL 的历史哨兵，系统返回只关抽屉不离开页面；点当前项（日刻）只关抽屉，其他项、头部头像（主站账号页）、底栏搜索框（主站搜索）都是关完再跳转。
  */
 (function () {
   var doc = document, G = window;
@@ -51,7 +51,7 @@
     dlg.addEventListener('click', function (e) {
       var t = e.target;
       if (sheet && sheet.contains(t)) {
-        var a = t.closest ? t.closest('a.sgx-drawer-item') : null;
+        var a = t.closest ? t.closest('a.sgx-drawer-item, a.sgx-drawer-me, a.sgx-drawer-search') : null;
         if (!a) return;
         if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
         e.preventDefault();
