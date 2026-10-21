@@ -20,12 +20,13 @@ styrigx-daymark/
 |---|---|
 | `hugo.yaml` | Hugo 配置（`params.version` 是版本号，README 徽章读它） |
 | `wrangler.toml` | Pages 项目 `styrigx-daymark`：不带变量、钥匙和绑定 |
-| `layouts/_default/baseof.html` | 沉浸式 app 顶栏（九宫格 · 余响/拾录/百味 分段滑块 · 头像）、导航抽屉（四个应用） |
+| `layouts/_default/baseof.html` | 沉浸式 app 顶栏（九宫格 · 余响/拾录/百味 分段滑块 · 头像）、导航抽屉（主站共享外壳 `assets/sgx-shell/nav.json`：四个应用 + 设置） |
 | `layouts/index.html` | 首页三块面板（余响 · 拾录 · 百味）、记一句弹层、新建专题、确认框 |
 | `assets/js/daymark.js` | 首页逻辑（页签 / hash 路由、余响、拾录、百味、记一句）；纯函数导出给 `tests/web/daymark.test.mjs` |
 | `assets/js/topbar.js` | 导航抽屉开关 |
-| `assets/js/sgx/` | 外观和语言继承主站（`sgx-ui` cookie：mode / pal / accent / fs / rm / lang） |
-| `assets/css/input.css` | 样式；`accent start … accent end` 之间由 `scripts/gen-accent-css.mjs` 生成 |
+| `assets/js/sgx/` | 外观和语言继承主站（`sgx-ui` cookie：mode / pal / accent 种子 / fs / rm / lang）；`shell/palette-scheme.js` 是主站共享外壳的自定义主题色引擎（`shell-accent.js` 按需加载） |
+| `assets/sgx-shell/` | 主站共享外壳的抽屉项 + 图标（`nav.json`）、预设种子（`palettes.json`），`scripts/sync-shell.mjs` 同步，勿手改 |
+| `assets/css/input.css` | 样式；`@sgx-shell:begin … end` 之间是主站共享外壳（色彩角色 + 顶栏材质 + 导航抽屉，`scripts/sync-shell.mjs` 写入，勿手改），后面的 `--m-*` 只是角色的别名 |
 | `assets/js/sgx-lock-sync.js` | 切回前台复查会话，401 → 刷新去主站锁屏 |
 | `static/_worker.js` | 只把 `*.pages.dev` 跳回 `daymark.styrigx.com`（不经网关的地址不能直接开页面） |
 

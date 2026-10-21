@@ -1,0 +1,5 @@
+{{/* 导航抽屉项地址（共享外壳 nav.json 一项 + 是否英文）：日刻自己的项用站内相对地址，其余用绝对地址；英文加 /en 前缀 */}}
+{{ $p := .it.path }}
+{{ if .en }}{{ $p = printf "/en%s" .it.path }}{{ end }}
+{{ if ne .it.origin "https://daymark.styrigx.com" }}{{ $p = printf "%s%s" .it.origin $p }}{{ end }}
+{{ return $p }}

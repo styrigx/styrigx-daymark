@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 {{ $isEn := or (eq .Lang "en") (hasPrefix .RelPermalink "/en/") }}
-<html lang="{{ if $isEn }}en{{ else }}zh{{ end }}" class="scroll-smooth">
+{{/* 自定义主题色引擎（共享外壳 palette-scheme.js）：只在 cookie 是自定义色且本站还没缓存时，由 ui-inherit-run.js 按需加载 */}}
+{{ $shellAccent := resources.Get "js/sgx/shell-accent.js" | js.Build (dict "format" "iife" "minify" true "target" "es2018") | fingerprint }}
+<html lang="{{ if $isEn }}en{{ else }}zh{{ end }}" class="scroll-smooth" data-sgx-accent-js="{{ $shellAccent.RelPermalink }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -46,7 +48,6 @@ __applyLayout();
    首页：页签是 role=tab 的按钮，daymark.js 切换面板（hash：无 / #trove / #flavors）。
    其他页（404）：页签是回首页对应页签的链接，不高亮。
    头像只展示（以后接账号体系），不可点击。外观和语言跟主站（sgx-ui cookie，见 ui-inherit-run.js）。 */}}
-{{ $main := cond $isEn "https://styrigx.com/en/" "https://styrigx.com/" }}
 {{ $home := cond $isEn "/en/" "/" }}
 {{ $tabs := slice
   (dict "id" "echo" "zh" "余响" "en" "Echo" "hash" "")
@@ -55,7 +56,7 @@ __applyLayout();
 }}
 <header id="site-nav">
   <div class="sgx-topbar">
-    <button type="button" class="sgx-tb-nav" aria-label="{{ if $isEn }}Navigation{{ else }}导航{{ end }}" aria-haspopup="dialog" aria-controls="sgx-drawer" aria-expanded="false">{{ partial "icon.html" "apps-grid" }}</button>
+    <button type="button" class="sgx-tb-nav" aria-label="{{ if $isEn }}Navigation{{ else }}导航{{ end }}" aria-haspopup="dialog" aria-controls="sgx-drawer" aria-expanded="false">{{ index (resources.Get "sgx-shell/nav.json" | transform.Unmarshal).icons "apps-grid" | safeHTML }}</button>
     <div class="sgx-tb-pill">
       {{ if .IsHome }}
       <div class="sgx-seg" role="tablist" aria-label="{{ if $isEn }}Daymark sections{{ else }}日刻分区{{ end }}" data-dm-seg style="--seg-pos:0">
@@ -75,20 +76,22 @@ __applyLayout();
   </div>
 </header>
 
-{{/* 导航抽屉（同博客 / 主站的 Gmail 式左侧抽屉，topbar.js 开关）：只有四个应用 主页 / 书签 / 日刻 / 博客，
-   没有设置、没有底部区。日刻是当前项（强调色药丸），点它只关抽屉；其余跳主站 / 博客（同一标签页）。 */}}
-{{ $navItems := slice
-  (dict "id" "home" "icon" "nav-home" "zh" "主页" "en" "Home" "url" $main)
-  (dict "id" "bookmarks" "icon" "nav-bookmark" "zh" "书签" "en" "Bookmarks" "url" (cond $isEn "https://styrigx.com/en/bookmarks/" "https://styrigx.com/bookmarks/"))
-  (dict "id" "daymark" "icon" "nav-daymark" "zh" "日刻" "en" "Daymark" "url" $home)
-  (dict "id" "blog" "icon" "nav-blog" "zh" "博客" "en" "Blog" "url" (cond $isEn "https://blog.styrigx.com/en/" "https://blog.styrigx.com/"))
-}}
-<dialog id="sgx-drawer" class="sgx-drawer" aria-label="{{ if $isEn }}Navigation{{ else }}导航{{ end }}">
+{{/* 导航抽屉（主站共享外壳同一份，topbar.js 开关）：项和图标来自 assets/sgx-shell/nav.json，样式（宽度、毛玻璃、tonal 当前项、字体）
+   来自 input.css 的 @sgx-shell 段，都由 scripts/sync-shell.mjs 从主站同步，勿手改。首页 / 书签 / 日刻 / 博客，分隔线下 设置。
+   日刻是当前项、站内相对地址，点它只关抽屉；其余跳主站 / 博客（同一标签页）。 */}}
+{{ $shellNav := resources.Get "sgx-shell/nav.json" | transform.Unmarshal }}
+<dialog id="sgx-drawer" class="sgx-drawer" aria-label="{{ cond $isEn $shellNav.label.en $shellNav.label.zh }}">
   <nav class="sgx-drawer-sheet">
-    <p class="sgx-drawer-head">Styrigx</p>
+    <p class="sgx-drawer-head">{{ $shellNav.brand }}</p>
     <ul class="sgx-drawer-list">
-      {{ range $navItems }}
-      <li><a class="sgx-drawer-item" href="{{ .url }}" data-nav="{{ .id }}"{{ if eq .id "daymark" }} aria-current="page"{{ end }}><span class="sgx-drawer-ic">{{ partial "icon.html" .icon }}</span><span class="sgx-drawer-label">{{ cond $isEn .en .zh }}</span></a></li>
+      {{ range $shellNav.items }}
+      <li><a class="sgx-drawer-item" href="{{ partial "shell-nav-href.html" (dict "it" . "en" $isEn) }}" data-nav="{{ .id }}"{{ if eq .id "daymark" }} aria-current="page"{{ end }}><span class="sgx-drawer-ic">{{ index $shellNav.icons .icon | safeHTML }}</span><span class="sgx-drawer-label">{{ cond $isEn .en .zh }}</span></a></li>
+      {{ end }}
+    </ul>
+    <hr class="sgx-drawer-div">
+    <ul class="sgx-drawer-list">
+      {{ range $shellNav.footer }}
+      <li><a class="sgx-drawer-item" href="{{ partial "shell-nav-href.html" (dict "it" . "en" $isEn) }}" data-nav="{{ .id }}"><span class="sgx-drawer-ic">{{ index $shellNav.icons .icon | safeHTML }}</span><span class="sgx-drawer-label">{{ cond $isEn .en .zh }}</span></a></li>
       {{ end }}
     </ul>
   </nav>

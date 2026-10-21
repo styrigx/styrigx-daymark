@@ -33,6 +33,13 @@ A sub-site of Styrigx's Space. Save a line you read, heard or thought of; one pu
 | Data | Cloudflare D1 `styrigx-daymark` |
 | Auth | Holds no keys: the main site's auth gateway checks sessions for pages; the API asks it via a service binding |
 
+## Shared shell
+
+Colour roles (13 presets × light/dark + custom seed), top-bar material, nav drawer, the custom-accent engine and the drawer items come from the main site
+(styrigx-space `web/shared/shell`). The copy lives in the `@sgx-shell:begin / end` block of `web/assets/css/input.css`, `web/assets/js/sgx/shell/` and
+`web/assets/sgx-shell/`, with source and version in `sgx-shell.lock.json`. **Don't edit it by hand**: after the main site changes, run
+`node scripts/sync-shell.mjs` (default ref `main`; `--ref <branch>`; `--from <local checkout>`), then `npm run build:css`. CI runs `--check`.
+
 ## Seed data
 
 Migration `0003_seed_quotes` adds 63 seed lines (Nietzsche and *The Great Gatsby*) and two collections of the same names. It only inserts: lines whose exact text already exists are skipped, an existing collection with the same name is reused, nothing is updated or deleted. Regenerate with `node scripts/gen-seed-sql.mjs <quotes.json>` (the source texts are not in the repo).
