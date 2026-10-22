@@ -1,0 +1,17 @@
+{{ define "main" }}
+{{ $isEn := or (eq .Lang "en") (hasPrefix .RelPermalink "/en/") }}
+{{/* 留言板：三个子站（博客 / 日刻 / 奇趣）共用同一个 Giscus 讨论串（hugo.yaml params.guestbook.giscus，data-mapping="specific"、term = guestbook）。
+   页名只在顶栏长条里（没有大标题区）；正文是一张 One UI 卡片（同拾录句子卡片的材质和圆角），里面一行说明 + Giscus。
+   js/guestbook.js 按当前深浅色插入 giscus client.js，<html class="dark"> 变了同步主题；语言跟页面（zh-CN / en）。 */}}
+{{ $g := site.Params.guestbook.giscus }}
+<main class="w-full mx-auto dm-gb" style="max-width:860px;padding-left:16px;padding-right:16px">
+  <section class="dm-gb-card" aria-label="{{ if $isEn }}Guestbook{{ else }}留言板{{ end }}">
+    <p class="dm-gb-note">{{ if $isEn }}One guestbook for Blog, Daymark and Curio — say hi.{{ else }}三个子站共用这块留言板，随便聊聊。{{ end }}</p>
+    <div class="dm-gb-giscus" data-giscus data-repo="{{ $g.repo }}" data-repo-id="{{ $g.repoId }}" data-category="{{ $g.category }}" data-category-id="{{ $g.categoryId }}" data-mapping="{{ $g.mapping }}" data-term="{{ $g.term }}" data-strict="{{ $g.strict }}" data-reactions-enabled="{{ $g.reactionsEnabled }}" data-emit-metadata="{{ $g.emitMetadata }}" data-input-position="{{ $g.inputPosition }}" data-light-theme="{{ $g.lightTheme }}" data-dark-theme="{{ $g.darkTheme }}" data-lang="{{ cond $isEn "en" "zh-CN" }}" data-loading="{{ $g.loading }}"></div>
+  </section>
+</main>
+{{ end }}
+
+{{ define "pagejs" }}
+<script src="{{ (resources.Get "js/guestbook.js" | minify | fingerprint).RelPermalink }}"></script>
+{{ end }}

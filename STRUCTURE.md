@@ -20,7 +20,8 @@ styrigx-daymark/
 |---|---|
 | `hugo.yaml` | Hugo 配置（`params.version` 是版本号，README 徽章读它） |
 | `wrangler.toml` | Pages 项目 `styrigx-daymark`：不带变量、钥匙和绑定 |
-| `layouts/_default/baseof.html` | 沉浸式 app 顶栏（九宫格 · 余响/拾录/百味 分段滑块 · 头像）、导航抽屉（主站共享外壳 `assets/sgx-shell/nav.json`：四个应用 + 设置） |
+| `layouts/_default/baseof.html` | 沉浸式 app 顶栏（九宫格 · 首页 余响/拾录/百味 分段滑块、其他页页名 · 留言板圆）、导航抽屉（主站共享外壳 `assets/sgx-shell/nav.json`：四个应用）；没有页脚 |
+| `layouts/_default/guestbook.html` | 留言板 `/guestbook/`（`content/guestbook.md`、`content/en/guestbook.md`）：三个子站共用的 Giscus 讨论串（`hugo.yaml` 的 `params.guestbook.giscus`），`assets/js/guestbook.js` 插入并跟深浅色 |
 | `layouts/index.html` | 首页三块面板（余响 · 拾录 · 百味）、记一句弹层、新建专题、确认框 |
 | `assets/js/daymark.js` | 首页逻辑（页签 / hash 路由、余响、拾录、百味、记一句）；纯函数导出给 `tests/web/daymark.test.mjs` |
 | `assets/js/topbar.js` | 导航抽屉开关 |

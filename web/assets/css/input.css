@@ -6756,10 +6756,6 @@ html, body {
 /* 抽屉复制件：盖住顶栏，带遮罩，从抽屉当时的样子淡到透明（JS 用 Web Animations 做淡出，完了就删） */
 .sgx-drawer.sgx-srch-ghost { z-index: 60; pointer-events: none; background: var(--sgx-scrim); }
 /* @sgx-shell:end */
-/* 本站：顶栏右圆头像（共享外壳 v8 把头像挪进抽屉头、删了 .sgx-tb-me；子站顶栏暂时保留头像，以后换成本站功能） */
-.sgx-tb-me { width: var(--sgx-tb-btn); height: var(--sgx-tb-btn); border-radius: 999px; flex-shrink: 0; overflow: hidden; display: block;
-  border: 1px solid var(--sgx-mat-line); box-shadow: var(--sgx-mat-shadow); pointer-events: auto; }
-.sgx-tb-me .sgx-tb-avatar { width: 100%; height: 100%; border: 0; border-radius: 999px; object-fit: cover; display: block; }
 /* 抽屉导航项下的分隔线（同主站 .sgx-drawer-sep，主站也放在共享外壳段外） */
 .sgx-drawer-sep { border: 0; border-top: 1px solid color-mix(in srgb, var(--sgx-text-primary) 12%, transparent); margin: 18px 0; height: 0; }
 
@@ -6920,17 +6916,15 @@ main {
 /* DeX：无底部栏，只留 24px + 安全区 */
 .layout-dex main { padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
 
-/* ===== 页脚：内容短的页面也沉底，且始终在任务栏上方 ===== */
+/* ===== 正文撑满一屏（没有页脚，2026-10-22 删了版权行） ===== */
 body { display: flex; flex-direction: column; min-height: 100dvh; }
 main { flex: 1 0 auto; }
-footer { padding-bottom: calc(var(--dock-h) + env(safe-area-inset-bottom, 0px)); }
-.layout-dex footer { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
 /* ===== 顶栏：主题色铺满顶部，三块悬浮（顶栏 v3，与主站 styrigx-space 同一套） ===== */
 /* --nav-h = 68px（顶栏底边位置：16 + 52）。所有用到的地方都跟这个值走。 */
 :root { --nav-h: 68px; }
 
-/* app topbar start — 沉浸式 app 顶栏（同博客）：九宫格圆 · 分段滑块长条 · 头像圆。
+/* app topbar start — 沉浸式 app 顶栏（同博客）：九宫格圆 · 长条（首页分段滑块 / 其他页页名）· 留言板圆。
    三块的尺寸、位置、毛玻璃材质，和导航抽屉的全部样式（宽度、毛玻璃、tonal 当前项、字体）都在上面的主站共享外壳里；
    这里只有日刻自己的：长条里的分段滑块。颜色只用 --sgx-* 角色。 */
 #site-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 50; pointer-events: none;
@@ -6938,16 +6932,12 @@ footer { padding-bottom: calc(var(--dock-h) + env(safe-area-inset-bottom, 0px));
 .sgx-topbar { view-transition-name: sgx-topbar; }
 .sgx-tb-pill { position: relative; flex: 1; min-width: 0; height: var(--sgx-tb-btn); border-radius: calc(var(--sgx-tb-btn) / 2);
   display: flex; align-items: center; justify-content: center; padding: 0 6px; color: var(--sgx-text-primary); }
-/* 右圆：头像，只展示，不可点击 */
-.sgx-tb-me { cursor: default; user-select: none; }
-.sgx-tb-me .sgx-tb-avatar { -webkit-user-drag: none; }
 /* 分段滑块：主色指示器按 --seg-pos（0..2，可为小数）平移 */
 .sgx-seg { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; max-width: 360px; height: 40px; margin: 0 auto; }
 .sgx-seg-ind { position: absolute; top: 0; left: 0; width: calc(100% / 3); height: 100%; border-radius: 20px;
   background: var(--sgx-primary); box-shadow: 0 2px 8px color-mix(in srgb, var(--sgx-primary) 35%, transparent);
   transform: translateX(calc(var(--seg-pos, 0) * 100%)); transition: transform .28s cubic-bezier(.2,0,0,1); pointer-events: none; }
 .sgx-seg.is-dragging .sgx-seg-ind { transition: none; }
-.sgx-seg--none .sgx-seg-ind { display: none; }
 .sgx-seg-btn { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; min-width: 0; height: 40px; padding: 0 6px;
   border: 0; border-radius: 20px; background: transparent; color: var(--sgx-text-secondary); font: inherit; font-size: 15px; font-weight: 600; line-height: 1;
   white-space: nowrap; text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: color .2s ease; }
@@ -7146,7 +7136,6 @@ html { scroll-padding-top: var(--nav-h); }
 .dex-dock-btn.dex-dock-active .dex-dock-dot{opacity:1}
 /* DeX 底部 Dock 不滚动隐藏；页面底部留出 Dock 高度 + 16px */
 .layout-dex main{padding-bottom:calc(var(--dex-dock-h) + 12px + 16px + env(safe-area-inset-bottom,0px))}
-.layout-dex footer{padding-bottom:calc(var(--dex-dock-h) + 12px + env(safe-area-inset-bottom,0px))}
 
 /* ----- 顶栏右侧图标按钮 ----- */
 .nav-icobtn{padding:8px;min-width:44px;justify-content:center}
@@ -7476,7 +7465,6 @@ mark.smk{background:var(--m-primary-container);color:var(--m-on-primary-containe
 .bk-theme-active{font-weight:800;color:var(--m-primary);-webkit-appearance:none;appearance:none;background:transparent;border:0!important}
 
 /* 主站同款页脚第二行（复用 styrigx-space 样式） */
-.sgx-powered{margin-top:4px;font-size:11px;line-height:1.5;text-align:center;color:color-mix(in srgb,var(--m-on-surface-variant) 62%,transparent)}
 
 /* 主题选项选中态：右侧对勾（与行样式统一） */
 .bk-theme-check{color:var(--m-primary);flex-shrink:0}
@@ -7601,3 +7589,9 @@ mark.smk{background:var(--m-primary-container);color:var(--m-on-primary-containe
 .dm-tagchip button{width:24px;height:24px;border:0;border-radius:999px;background:transparent;color:var(--m-on-surface-variant);font-size:16px;line-height:1;cursor:pointer}
 .layout-phone #edit-wrap .bk-panel{max-height:92dvh}
 @media (prefers-reduced-motion: reduce){.dm-card,.dm-fcard,.dm-btn,.dm-fab{transition:none}}
+
+/* ===== 留言板（/guestbook/，layouts/_default/guestbook.html）：一张 One UI 卡片（同 .dm-card 的材质、描边、圆角），里面说明 + Giscus ===== */
+.dm-gb-card{padding:18px 16px 8px;border-radius:1.25rem;background:var(--sgx-mat);border:1px solid var(--m-outline);color:var(--m-on-surface)}
+.dm-gb-note{margin:0 4px 14px;font-size:14px;line-height:1.6;color:var(--m-on-surface-variant)}
+.dm-gb-giscus{min-height:240px}
+.dm-gb-giscus .giscus,.dm-gb-giscus .giscus-frame{width:100%;border:0}
