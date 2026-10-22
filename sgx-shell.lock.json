@@ -3,13 +3,13 @@
   "source": "styrigx/styrigx-space",
   "dir": "web/shared/shell",
   "ref": "main",
-  "version": "3df3549bef6a",
+  "version": "79e9f350e100",
   "files": {
     "tokens.css": "4fab2634c833c36d59fa5fb8731053efee26249cdef7f797eac756e6ac76623e",
     "shell.css": "3129b8f69f3fb04e7667e57f1efed44b1167c2ac1fa9371c688bd158a4f48652",
     "palette-scheme.js": "ab6d347b23dc2f062f3b7ca5ae1b94543e898864a8f669972e8720d2729c50c4",
     "search.js": "d9b091a8cbcf675054e4fcb8ca52dfa7630f9e0bfbdb8a417ab8aafe03973ee8",
-    "nav.json": "4d71de2c4cb31ea8c9f871d576fcb07062272b30c757b42931992b6725bf02cc",
+    "nav.json": "665313fb523246fff5dddc1a920abbfe7578438b3d97673d53838bd471f70d32",
     "palettes.json": "cb95c4e6570ab1cdcb2bb82de30d709a99910157b7e1b435d9d3b9e8b00d5711",
     "ui-cookie-read.js": "1f3775827eade901a871bc46eef87a629a437547073c81ccee9499324698f0b0",
     "ui-cookie-contract.json": "c9034a3fbea2f083349fd69e58c9d6f5391ab092df1e11d2ad759b83a957c8fd",
@@ -21,7 +21,7 @@
     "web/assets/css/input.css": "0d57ba928e2e9b1d12f2e2be3c14f88f51b5f7963cf0c68cc4f52ac4a1a71020",
     "web/assets/js/sgx/shell/palette-scheme.js": "b9d455f8ffb191daa5c13059b4fcb515042194fc76b7364e76174e92c9077216",
     "web/assets/js/sgx/shell/search.js": "a065ace177d976ce642d8d6a22450f5f15a2efd3202d6144d0e743b860a1724a",
-    "web/assets/sgx-shell/nav.json": "4d71de2c4cb31ea8c9f871d576fcb07062272b30c757b42931992b6725bf02cc",
+    "web/assets/sgx-shell/nav.json": "665313fb523246fff5dddc1a920abbfe7578438b3d97673d53838bd471f70d32",
     "web/assets/sgx-shell/palettes.json": "cb95c4e6570ab1cdcb2bb82de30d709a99910157b7e1b435d9d3b9e8b00d5711"
   }
 }

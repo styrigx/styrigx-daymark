@@ -66,7 +66,7 @@ test('访客：顶栏三页签、没有搜索栏和快捷面板（搜索层平�
   await expect(page.locator('#dm-echo-body')).toContainText('鲁迅 · 《故乡》');
   await expect(page.locator('#dm-share')).toBeVisible();
   await page.locator('.sgx-tb-nav').click();
-  await expect(page.locator('#sgx-drawer .sgx-drawer-item')).toHaveText(['首页', '奇趣', '日刻', '博客']);
+  await expect(page.locator('#sgx-drawer .sgx-drawer-item')).toHaveText(['主站', '奇趣', '日刻', '博客']);
   await expect(page.locator('#sgx-drawer [data-nav="daymark"]')).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('#sgx-drawer [data-nav="daymark"]')).toHaveAttribute('href', '/');
   /* 同主站：头部头像去主站账号页，导航项下一条分隔线，底栏搜索框原地开搜索层（href 只是没 JS 时的退路） */
