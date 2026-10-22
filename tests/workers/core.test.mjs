@@ -51,7 +51,7 @@ function call(p, { role = null, db = makeD1(), method = 'GET', body, origin = OR
   if (origin) headers.Origin = origin;
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   const req = new Request(ORIGIN + p, { method, headers, body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body) });
-  return worker.fetch(req, { AUTH: auth(role, throws), DB: db }, CTX);
+  return worker.fetch(req, { AUTH: auth(role, throws), DB: db, SEARCH_KV: { async put() {} } }, CTX);
 }
 const add = async (db, q) => (await (await call('/api/quotes', { role: 'owner', db, method: 'POST', body: q })).json()).quote;
 

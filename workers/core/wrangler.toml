@@ -34,3 +34,13 @@ migrations_dir = "migrations"
 binding = "AUTH"
 service = "styrigx-auth-gateway"
 entrypoint = "SessionVerifier"
+
+# 全站搜索索引：KV styrigx-search-index（主站 workers/search-index 读它），本 Worker 只写 site:daymark 这一条。
+# 写接口成功后重建（src/search-index.js），下面的 Cron 每小时兜底；KV 里只有句子的标题、署名、链接，不是钥匙。
+[[kv_namespaces]]
+binding = "SEARCH_KV"
+id = "bd1babcc3fe74d58994e254c74d34ced"
+
+# Cron：每小时第 17 分重建一次搜索索引（首次部署后也靠它填上）。
+[triggers]
+crons = ["17 * * * *"]

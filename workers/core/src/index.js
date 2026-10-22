@@ -10,9 +10,13 @@
  *   3. 按路由表交给 src/api/<路径>.js；写操作自己再要求 owner + 同源
  * /api/session-check 由网关的更精确路由直接回答，到不了这里；万一到了，同样问网关。
  * 不在路由表里的路径 → 404；方法不支持 → 405。
+ *
+ * 全站搜索索引（src/search-index.js）：写接口成功后用 ctx.waitUntil 重建 KV site:daymark；
+ * Cron（wrangler.toml [triggers]）每小时兜底重建。重建出错只打日志，不影响接口响应。
  */
 import { API_ROUTES } from './routes.js';
 import { verifySession } from './api/_auth.js';
+import { rebuildSearchIndex, isMutation } from './search-index.js';
 
 const METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
 const NO_STORE = 'private, no-store';
@@ -91,7 +95,19 @@ export async function handle(request, env, ctx) {
   if (!hit) return json(404, { ok: false, error: 'not-found' });
   const handler = pickHandler(hit.mod, request.method);
   if (!handler) return json(405, { ok: false, error: 'method' });
-  return handler(makeContext(request, env, ctx, hit.params, hit.functionPath));
+  const res = await handler(makeContext(request, env, ctx, hit.params, hit.functionPath));
+  if (res && isMutation(request.method, res.status)) scheduleRebuild(env, ctx);
+  return res;
+}
+
+/** 写接口成功后，响应先回，索引在后台重建（rebuildSearchIndex 自己吞错） */
+function scheduleRebuild(env, ctx) {
+  try {
+    const p = rebuildSearchIndex(env);
+    if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(p);
+  } catch (e) {
+    console.error('[daymark-search] schedule failed');
+  }
 }
 
 export default {
@@ -107,5 +123,17 @@ export default {
       console.error('[daymark-core] unhandled: ' + (e && e.name ? e.name : 'error'));
       return tag(json(500, { ok: false, error: 'internal' }));
     }
+  },
+
+  /**
+   * Cron 兜底：每小时重建一次搜索索引（首次部署后也靠它填上）。
+   * @param {any} controller
+   * @param {Record<string, any>} env
+   * @param {{ waitUntil(p: Promise<any>): void }} ctx
+   */
+  async scheduled(controller, env, ctx) {
+    const p = rebuildSearchIndex(env);
+    if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(p);
+    await p;
   },
 };
