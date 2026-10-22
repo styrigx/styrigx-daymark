@@ -32,9 +32,9 @@ test('没有搜索、快捷面板、页名；也没有标签筛选条', () => {
   assert.doesNotMatch(css, /\.bk-cap|\.sgx-qp/);
 });
 
-test('抽屉：主站共享外壳的 nav.json（首页 / 奇趣 / 日刻 / 博客），模板不写死项；结构同主站', () => {
+test('抽屉：主站共享外壳的 nav.json（主站 / 奇趣 / 日刻 / 博客），模板不写死项；结构同主站', () => {
   const nav = JSON.parse(readFileSync(path.join(REPO, 'web/assets/sgx-shell/nav.json'), 'utf8'));
-  assert.deepEqual(nav.items.map((i) => i.zh), ['首页', '奇趣', '日刻', '博客']);
+  assert.deepEqual(nav.items.map((i) => i.zh), ['主站', '奇趣', '日刻', '博客']);
   assert.deepEqual(nav.footer, []);
   assert.equal(nav.me.href, 'https://styrigx.com/settings/account/');
   const drawer = base.slice(base.indexOf('<dialog id="sgx-drawer"'), base.indexOf('</dialog>'));
