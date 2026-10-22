@@ -1,7 +1,7 @@
 /**
  * 顶栏（沉浸式 app，同博客 BlogTopNav）：这里只管导航抽屉；长条里的分段滑块（余响 · 拾录 · 百味）由 daymark.js 管。
  * - 抽屉（#sgx-drawer，<dialog> 模态）：九宫格打开；点遮罩 / 系统返回 / Esc 关闭。
- *   打开时 push 一条同 URL 的历史哨兵，系统返回只关抽屉不离开页面；点当前项（日刻）只关抽屉，其他项、头部头像（主站账号页）、底栏搜索框（主站搜索）都是关完再跳转。
+ *   打开时 push 一条同 URL 的历史哨兵，系统返回只关抽屉不离开页面；点当前项（日刻）只关抽屉，其他项、头部头像（主站账号页）、底栏搜索框原地打开搜索层（不跳站）；其余都是关完再跳转。
  */
 (function () {
   var doc = document, G = window;
@@ -45,6 +45,16 @@
       clearTimeout(timer);
       timer = setTimeout(finish, reduced() ? 80 : MS);
     }
+    /* 交给搜索层：同步关掉抽屉（不退历史），把抽屉的哨兵让给搜索层（它 replaceState 成自己的，不多占一条） */
+    function handoff() {
+      var had = sentinel;
+      open = false; sentinel = false; after = null;
+      clearTimeout(timer);
+      btn.setAttribute('aria-expanded', 'false');
+      dlg.classList.remove('is-open');
+      try { dlg.close(); } catch (e) {}
+      return had;
+    }
     G.addEventListener('popstate', function () { if (open) hide(null, true); });
     dlg.addEventListener('cancel', function (e) { e.preventDefault(); hide(); });
     btn.addEventListener('click', function (e) { e.stopPropagation(); if (open) hide(); else show(); });
@@ -56,6 +66,11 @@
         if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
         e.preventDefault();
         if (a.getAttribute('aria-current') === 'page') { hide(); return; }
+        /* 底栏搜索框：原地打开搜索层（search-host.js），不跳主站。必须在这次点击里同步调用，安卓才弹键盘 */
+        if (a.classList.contains('sgx-drawer-search') && G.SgxSearch) {
+          G.SgxSearch.open({ from: a, ghost: dlg, handoff: handoff });
+          return;
+        }
         var href = a.href;
         /* 等哨兵出栈后再跳，避免 history.back() 吃掉跳转 */
         hide(function () { setTimeout(function () { location.href = href; }, 60); });

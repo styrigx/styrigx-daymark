@@ -56,12 +56,12 @@ async function mock(page, owner) {
   return calls;
 }
 
-test('访客：顶栏三页签、没有搜索栏和快捷面板；抽屉同主站（四个应用 + 设置）；余响今日一句', async ({ page }) => {
+test('访客：顶栏三页签、没有搜索栏和快捷面板（搜索层平时藏着）；抽屉同主站（四个应用 + 设置）；余响今日一句', async ({ page }) => {
   await mock(page, false);
   await page.goto('/');
   await expect(page.locator('[data-dm-tab]')).toHaveText(['余响', '拾录', '百味']);
   await expect(page.locator('#dm-tab-echo')).toHaveAttribute('aria-selected', 'true');
-  await expect(page.locator('#bk-cap, #sgx-qp, .sgx-tb-search, .sgx-tb-quick, input[type="search"], [role="search"]')).toHaveCount(0);
+  await expect(page.locator('#bk-cap, #sgx-qp, .sgx-tb-search, .sgx-tb-quick, input[type="search"]:visible, [role="search"]:visible')).toHaveCount(0);
   await expect(page.locator('#dm-echo-day')).toHaveText('10月20日 星期二');
   await expect(page.locator('#dm-echo-body')).toContainText('鲁迅 · 《故乡》');
   await expect(page.locator('#dm-share')).toBeVisible();
@@ -69,7 +69,7 @@ test('访客：顶栏三页签、没有搜索栏和快捷面板；抽屉同主�
   await expect(page.locator('#sgx-drawer .sgx-drawer-item')).toHaveText(['首页', '奇趣', '日刻', '博客']);
   await expect(page.locator('#sgx-drawer [data-nav="daymark"]')).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('#sgx-drawer [data-nav="daymark"]')).toHaveAttribute('href', '/');
-  /* 同主站：头部头像去主站账号页，导航项下一条分隔线，底栏搜索框去主站搜索 */
+  /* 同主站：头部头像去主站账号页，导航项下一条分隔线，底栏搜索框原地开搜索层（href 只是没 JS 时的退路） */
   await expect(page.locator('#sgx-drawer .sgx-drawer-me')).toHaveAttribute('href', 'https://styrigx.com/settings/account/');
   await expect(page.locator('#sgx-drawer hr.sgx-drawer-sep')).toHaveCount(1);
   await expect(page.locator('#sgx-drawer .sgx-drawer-search')).toHaveAttribute('href', 'https://styrigx.com/search/');
@@ -83,6 +83,39 @@ test('访客：顶栏三页签、没有搜索栏和快捷面板；抽屉同主�
   expect(st.bg).toBe(st.tonal);
   expect(st.filter).toContain('blur(24px)');
   expect(Math.round(st.w)).toBe(Math.round(st.vw - 16 - 78 - 8 - 20));
+});
+
+test('抽屉底栏搜索：原地打开搜索层（不跳站、不刷新），底栏带星图标、自动聚焦，结果走本站 /api/search；返回只关搜索层', async ({ page }) => {
+  await mock(page, false);
+  const asked = [];
+  await page.route('**/api/search**', (r) => {
+    asked.push(new URL(r.request().url()).host);
+    return r.fulfill({ json: { hits: [{ title: 'GitHub', subtitle: '开发与云', url: '/#trove', type: 'quote' }] } });
+  });
+  await page.goto('/');
+  const origin = new URL(page.url()).origin;
+  await page.evaluate(() => { window.__noReload = 1; });
+  const histLen = await page.evaluate(() => history.length);
+  await page.locator('.sgx-tb-nav').click();
+  await page.locator('#sgx-drawer .sgx-drawer-search').click();
+  await expect(page.locator('.sgx-srch-bar')).toBeVisible();
+  await expect(page.locator('#sgx-srch-input')).toBeFocused();
+  await expect(page.locator('#sgx-drawer')).not.toHaveAttribute('open', '');
+  expect(new URL(page.url()).origin).toBe(origin);
+  expect(await page.evaluate(() => window.__noReload)).toBe(1);
+  /* 底栏和空白页的放大镜 = 抽屉同款带星图标 */
+  await expect(page.locator('.sgx-srch-bar .sgx-srch-ic path').first()).toHaveAttribute('d', /^M14\.9 9\.6/);
+  await expect(page.locator('.sgx-srch-empty .sgx-srch-empty-ic path').first()).toHaveAttribute('d', /^M14\.9 9\.6/);
+  await page.locator('#sgx-srch-input').fill('git');
+  await expect(page.locator('#sgx-srch-list [data-srch-u]').first()).toContainText('GitHub');
+  expect(asked.length).toBeGreaterThan(0);
+  expect(asked.every((h) => h === new URL(origin).host)).toBe(true);
+  /* 抽屉的历史哨兵让给搜索层：只多一条；系统返回只关搜索层，停在本页 */
+  expect(await page.evaluate(() => history.length)).toBe(histLen + 1);
+  await page.goBack();
+  await expect(page.locator('.sgx-srch-bar')).toBeHidden();
+  expect(new URL(page.url()).origin).toBe(origin);
+  expect(await page.evaluate(() => window.__noReload)).toBe(1);
 });
 
 test('页签：点了改 hash，#trove / #flavors 直达；英文页 Echo / Trove / Flavors', async ({ page }) => {
