@@ -13,23 +13,52 @@ const base = read('web/layouts/_default/baseof.html');
 const index = read('web/layouts/index.html');
 const css = read('web/assets/css/input.css');
 
-test('顶栏：九宫格 · 分段滑块（余响 · 拾录 · 百味，英文 Echo / Trove / Flavors）· 头像只展示', () => {
+test('顶栏：九宫格 · 长条（首页 = 分段滑块 余响 · 拾录 · 百味，英文 Echo / Trove / Flavors；其他页只有页名）· 右圆留言板', () => {
   const zh = [...base.matchAll(/"zh" "([^"]+)" "en" "([^"]+)" "hash"/g)].map((m) => [m[1], m[2]]);
   assert.deepEqual(zh, [['余响', 'Echo'], ['拾录', 'Trove'], ['百味', 'Flavors']]);
   assert.match(base, /class="sgx-tb-nav"/);
   assert.match(base, /role="tablist"[^>]*data-dm-seg/);
-  assert.match(base, /<span class="sgx-tb-me" aria-hidden="true">/);
-  assert.doesNotMatch(base, /<a class="sgx-tb-me"/);
+  assert.match(base, /\{\{ else \}\}\s*<span class="sgx-tb-title">\{\{ \$pageName \}\}<\/span>/);
+  /* 右圆 = 留言板（三个子站同一个 pen-line 图标），链本站 /guestbook/、英文 /en/guestbook/ */
+  assert.match(base, /\$gb := cond \$isEn "\/en\/guestbook\/" "\/guestbook\/"/);
+  assert.match(base, /<a class="sgx-tb-end sgx-tb-guestbook" href="\{\{ \$gb \}\}"[^>]*>\{\{ partial "icon\.html" "pen-line" \}\}<\/a>/);
+  assert.doesNotMatch(base, /sgx-tb-me|sgx-tb-avatar|sgx-seg--none/);
 });
 
-test('没有搜索、快捷面板、页名；也没有标签筛选条', () => {
+test('没有搜索、快捷面板；首页长条不放页名（页名只在留言板 / 404）；也没有标签筛选条', () => {
   for (const s of [base, index]) {
-    assert.doesNotMatch(s, /sgx-tb-search|sgx-tb-quick|sgx-qp|sgx-tb-title|bk-cap|type="search"|role="search"/);
+    assert.doesNotMatch(s, /sgx-tb-search|sgx-tb-quick|sgx-qp|bk-cap|type="search"|role="search"/);
   }
+  assert.doesNotMatch(index, /sgx-tb-title/);
+  /* 页名只在 if .IsHome（分段滑块）的 else 分支里 */
+  assert.ok(base.lastIndexOf('class="sgx-tb-title"') > base.indexOf('data-dm-seg'));
   assert.doesNotMatch(index, /id="dm-tags"/);
   assert.equal(existsSync(path.join(REPO, 'web/layouts/partials/sgx-qp.html')), false);
   assert.equal(existsSync(path.join(REPO, 'web/assets/js/sgx/shell/capsule-kb.js')), false);
   assert.doesNotMatch(css, /\.bk-cap|\.sgx-qp/);
+});
+
+test('没有版权页脚（© / Powered by），样式也删干净', () => {
+  assert.doesNotMatch(base, /<footer|©|Powered by/);
+  assert.doesNotMatch(css.slice(css.indexOf('/* @sgx-shell:end */')), /(^|[\s,}])footer\b|sgx-powered|sgx-tb-me/);
+});
+
+test('留言板：/guestbook/ + /en/guestbook/，共用 Giscus 讨论串（styrigx/styrigx · Announcements · specific term=guestbook）', () => {
+  const gb = read('web/layouts/_default/guestbook.html');
+  const cfg = read('web/hugo.yaml');
+  assert.match(read('web/content/guestbook.md'), /title: 留言板\nlayout: guestbook\nurl: \/guestbook\//);
+  assert.match(read('web/content/en/guestbook.md'), /title: Guestbook\nlayout: guestbook\nurl: \/en\/guestbook\//);
+  for (const [k, v] of [['repo', 'styrigx/styrigx'], ['repoId', 'R_kgDOVDhNiA'], ['category', 'Announcements'], ['categoryId', 'DIC_kwDOVDhNiM4DJVrs'],
+    ['mapping', 'specific'], ['term', 'guestbook'], ['strict', '0'], ['reactionsEnabled', '1'], ['inputPosition', 'top']]) {
+    assert.match(cfg, new RegExp('\\n      ' + k + ": '" + v.replace('/', '\\/') + "'"), k);
+  }
+  assert.match(gb, /data-giscus /);
+  assert.match(gb, /data-term="\{\{ \$g\.term \}\}"/);
+  assert.match(gb, /data-lang="\{\{ cond \$isEn "en" "zh-CN" \}\}"/);
+  assert.match(gb, /js\/guestbook\.js/);
+  const js = read('web/assets/js/guestbook.js');
+  assert.match(js, /https:\/\/giscus\.app\/client\.js/);
+  assert.match(js, /setConfig: \{ theme: t \}/);
 });
 
 test('抽屉：主站共享外壳的 nav.json（主站 / 奇趣 / 日刻 / 博客），模板不写死项；结构同主站', () => {

@@ -23,5 +23,22 @@ markup:
 params:
   description: 'Sloan Gray 的日刻：每天刻下一句值得记住的话'
   version: '1.1.0'
+  # 留言板（/guestbook/）：博客、日刻、奇趣三个子站共用同一个 Giscus 讨论串（styrigx/styrigx 仓库 Discussions，Announcements 分类，term = guestbook）。
+  # 三个站这段一字不差；改了任何一项就不是同一串留言了。
+  guestbook:
+    giscus:
+      repo: 'styrigx/styrigx'
+      repoId: 'R_kgDOVDhNiA'
+      category: 'Announcements'
+      categoryId: 'DIC_kwDOVDhNiM4DJVrs'
+      mapping: 'specific'
+      term: 'guestbook'
+      strict: '0'
+      reactionsEnabled: '1'
+      emitMetadata: '0'
+      inputPosition: 'top'
+      lightTheme: 'light'
+      darkTheme: 'dark'
+      loading: 'lazy'
 
 disableKinds: ['taxonomy', 'term', 'rss', 'section']

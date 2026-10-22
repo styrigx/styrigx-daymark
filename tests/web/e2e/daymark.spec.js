@@ -1,5 +1,6 @@
 // 日刻首页（手机）：接口用 page.route 假数据，不碰线上。
-// - 顶栏：九宫格 · 余响/拾录/百味 分段滑块 · 头像；没有搜索栏、快捷面板；抽屉只有四个应用
+// - 顶栏：九宫格 · 余响/拾录/百味 分段滑块 · 留言板圆；没有搜索栏、快捷面板、页脚；抽屉只有四个应用（主站 / 奇趣（书签+星）/ 日刻 / 博客）
+// - 留言板 /guestbook/：长条只有页名，卡片里是共用的 Giscus 讨论串（giscus.app 用 page.route 拦掉）
 // - 页签：默认余响，#trove / #flavors 直达，点页签改 hash；英文页 Echo / Trove / Flavors
 // - 余响：今日一句；再抽一句 → 回到今日；长按复制
 // - 拾录：全部句子新的在前；访客没有「记一句」；主人有，私密句子带锁
@@ -65,8 +66,17 @@ test('访客：顶栏三页签、没有搜索栏和快捷面板（搜索层平�
   await expect(page.locator('#dm-echo-day')).toHaveText('10月20日 星期二');
   await expect(page.locator('#dm-echo-body')).toContainText('鲁迅 · 《故乡》');
   await expect(page.locator('#dm-share')).toBeVisible();
+  /* 右圆 = 留言板（本站 /guestbook/）；没有顶栏头像、没有版权页脚 */
+  await expect(page.locator('.sgx-topbar > *')).toHaveCount(3);
+  await expect(page.locator('.sgx-topbar .sgx-tb-end')).toHaveAttribute('href', '/guestbook/');
+  await expect(page.locator('.sgx-topbar .sgx-tb-end')).toHaveAttribute('aria-label', '留言板');
+  await expect(page.locator('.sgx-tb-me, footer')).toHaveCount(0);
+  await expect(page.getByText('Powered by')).toHaveCount(0);
   await page.locator('.sgx-tb-nav').click();
   await expect(page.locator('#sgx-drawer .sgx-drawer-item')).toHaveText(['主站', '奇趣', '日刻', '博客']);
+  await expect(page.locator('#sgx-drawer [data-nav="home"]')).toHaveAttribute('href', 'https://styrigx.com/');
+  /* 奇趣图标 = 书签 + 星（同主站 #180） */
+  await expect(page.locator('#sgx-drawer [data-nav="curio"] path').first()).toHaveAttribute('d', /^M6 4\.5A1\.5/);
   await expect(page.locator('#sgx-drawer [data-nav="daymark"]')).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('#sgx-drawer [data-nav="daymark"]')).toHaveAttribute('href', '/');
   /* 同主站：头部头像去主站账号页，导航项下一条分隔线，底栏搜索框原地开搜索层（href 只是没 JS 时的退路） */
@@ -333,4 +343,35 @@ test('主题跟主站 sgx-ui cookie：pal 换预设；accent 是自定义种子 
   await expect(page.locator('#sgx-accent-roles')).toHaveCount(1);
   await expect(page.locator('#sgx-accent-js')).toHaveCount(0);
   expect(await ind()).toBe(custom);
+});
+
+test('留言板：右圆进 /guestbook/，长条只有页名，卡片里插入共用 Giscus（specific term=guestbook、输入框在上、跟浅色）；英文页 lang=en', async ({ page }) => {
+  await mock(page, false);
+  const giscus = [];
+  await page.route('https://giscus.app/**', (r) => { giscus.push(r.request().url()); return r.fulfill({ status: 200, contentType: 'text/javascript', body: '' }); });
+  await page.goto('/');
+  await page.locator('.sgx-topbar .sgx-tb-end').click();
+  await expect(page).toHaveURL(/\/guestbook\/$/);
+  await expect(page.locator('.sgx-tb-pill .sgx-tb-title')).toHaveText('留言板');
+  await expect(page.locator('.sgx-tb-pill .sgx-seg')).toHaveCount(0);
+  await expect(page.locator('.sgx-topbar .sgx-tb-end')).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('.dm-gb-card')).toBeVisible();
+  const s = page.locator('[data-giscus] script[src="https://giscus.app/client.js"]');
+  await expect(s).toHaveCount(1);
+  for (const [k, v] of [['data-repo', 'styrigx/styrigx'], ['data-repo-id', 'R_kgDOVDhNiA'], ['data-category', 'Announcements'], ['data-category-id', 'DIC_kwDOVDhNiM4DJVrs'],
+    ['data-mapping', 'specific'], ['data-term', 'guestbook'], ['data-strict', '0'], ['data-reactions-enabled', '1'], ['data-input-position', 'top'], ['data-lang', 'zh-CN'], ['data-theme', 'light']]) {
+    await expect(s, k).toHaveAttribute(k, v);
+  }
+  expect(giscus.length).toBeGreaterThan(0);
+  await expect(page.locator('footer')).toHaveCount(0);
+  /* 卡片不超出屏幕 */
+  const box = await page.locator('.dm-gb-card').boundingBox();
+  const vw = page.viewportSize().width;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(vw);
+  await page.goto('/en/guestbook/');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(page.locator('.sgx-tb-pill .sgx-tb-title')).toHaveText('Guestbook');
+  await expect(page.locator('.sgx-topbar .sgx-tb-end')).toHaveAttribute('href', '/en/guestbook/');
+  await expect(page.locator('[data-giscus] script')).toHaveAttribute('data-lang', 'en');
 });
