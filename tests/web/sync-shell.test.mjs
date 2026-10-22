@@ -31,6 +31,7 @@ test('renderTargets：标记段带来源和版本，内容按 manifest 拼接', 
     'tokens.css': ':root{--sgx-primary:#000}\n',
     'shell.css': '.sgx-drawer{}\n',
     'palette-scheme.js': 'export const x = 1;\n',
+    'search.js': 'export function mountSearch() {}\n',
     'nav.json': '{"items":[]}\n',
     'palettes.json': '{"presets":[]}\n',
   };

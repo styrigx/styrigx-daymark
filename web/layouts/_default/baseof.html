@@ -102,7 +102,7 @@ __applyLayout();
     </ul>
     {{ end }}
     </div>
-    {{/* 底栏搜索框（同主站）：子站还没接原地搜索层，点了去主站搜索（/search/ → 主站首页打开搜索层） */}}
+    {{/* 底栏搜索框（同主站）：topbar.js 点击时原地打开搜索层（search-host.js），不跳站；href 只是没 JS 时的退路 */}}
     {{ $sp := $shellNav.search.path }}{{ if $isEn }}{{ $sp = printf "/en%s" $sp }}{{ end }}
     <div class="sgx-drawer-foot"><a class="sgx-drawer-search" href="{{ $shellNav.search.origin }}{{ $sp }}" aria-label="{{ cond $isEn $shellNav.search.en $shellNav.search.zh }}"><span class="sgx-drawer-search-ic">{{ index $shellNav.icons $shellNav.search.icon | safeHTML }}</span><span class="sgx-drawer-search-label" aria-hidden="true">{{ cond $isEn $shellNav.search.en $shellNav.search.zh }}</span></a></div>
   </nav>
@@ -115,6 +115,8 @@ __applyLayout();
   </div>
 </footer>
 {{/* 顶栏：导航抽屉 */}}
+{{/* 原地搜索层（共享外壳 search.js + 本站宿主），先于 topbar.js 建好 DOM */}}
+<script src="{{ (resources.Get "js/sgx/search-host.js" | js.Build (dict "format" "iife" "minify" true "target" "es2018") | fingerprint).RelPermalink }}"></script>
 <script src="{{ (resources.Get "js/topbar.js" | minify | fingerprint).RelPermalink }}"></script>
 {{/* SGX 锁屏同步：切回前台 / bfcache 恢复时向服务端确认会话（各页面 pagejs 之前加载） */}}
 <script src="{{ (resources.Get "js/sgx-lock-sync.js" | minify | fingerprint).RelPermalink }}"></script>
