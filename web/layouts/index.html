@@ -124,7 +124,7 @@
     </form>
     <div class="shrink-0 px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-[var(--sgx-divider)] flex gap-3">
       <button id="edit-del" type="button" class="hidden flex-1 h-12 rounded-full bg-m-container text-m-error text-[15px] font-bold">{{ if $isEn }}Delete{{ else }}删除{{ end }}</button>
-      <button id="edit-save" type="button" class="flex-1 h-12 rounded-full bg-m-primary text-m-on-primary text-[15px] font-bold">{{ if $isEn }}Save{{ else }}保存{{ end }}</button>
+      <button id="edit-save" type="button" class="flex-1 h-12 rounded-full bg-m-primary-fill text-m-on-primary-fill text-[15px] font-bold">{{ if $isEn }}Save{{ else }}保存{{ end }}</button>
     </div>
   </div>
 </div>
@@ -143,7 +143,7 @@
       <label class="dm-field"><span>{{ if $isEn }}Name{{ else }}名字{{ end }}</span><input id="c-name" type="text" maxlength="30" autocomplete="off"></label>
       <label class="dm-field"><span>{{ if $isEn }}One-line intro{{ else }}一句话简介{{ end }}</span><input id="c-intro" type="text" maxlength="80" autocomplete="off"></label>
       <p id="col-err" class="hidden text-sm text-m-error"></p>
-      <button id="col-save" type="button" class="h-12 rounded-full bg-m-primary text-m-on-primary text-[15px] font-bold">{{ if $isEn }}Create{{ else }}建好了{{ end }}</button>
+      <button id="col-save" type="button" class="h-12 rounded-full bg-m-primary-fill text-m-on-primary-fill text-[15px] font-bold">{{ if $isEn }}Create{{ else }}建好了{{ end }}</button>
     </div>
   </div>
 </div>
