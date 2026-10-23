@@ -80,7 +80,7 @@ test('访客：顶栏三页签、没有搜索栏和快捷面板（搜索层平�
   await expect(page.locator('#sgx-drawer [data-nav="daymark"]')).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('#sgx-drawer [data-nav="daymark"]')).toHaveAttribute('href', '/');
   /* 同主站：头部头像去主站账号页，导航项下一条分隔线，底栏搜索框原地开搜索层（href 只是没 JS 时的退路） */
-  await expect(page.locator('#sgx-drawer .sgx-drawer-me')).toHaveAttribute('href', 'https://styrigx.com/settings/account/');
+  await expect(page.locator('#sgx-drawer .sgx-drawer-me')).toHaveAttribute('href', 'https://styrigx.com/account/');
   await expect(page.locator('#sgx-drawer hr.sgx-drawer-sep')).toHaveCount(1);
   await expect(page.locator('#sgx-drawer .sgx-drawer-search')).toHaveAttribute('href', 'https://styrigx.com/search/');
   /* 主站同款：毛玻璃面板、tonal 当前项、宽度 = 412 − 16 − 78 − 8 − 20 = 290（视口 412 时） */
@@ -326,7 +326,8 @@ test('主题跟主站 sgx-ui cookie：pal 换预设；accent 是自定义种子 
   const ind = () => page.evaluate(() => getComputedStyle(document.querySelector('.sgx-seg-ind')).backgroundColor);
   await page.goto('/');
   const lake = await ind();
-  await set({ v: 2, mode: 'dark', pal: 'matcha', accent: '#3c6a00' });
+  const matchaSeed = JSON.parse(require('node:fs').readFileSync(require('node:path').join(__dirname, '..', '..', '..', 'web/assets/sgx-shell/palettes.json'), 'utf8')).presets.find((p) => p.id === 'matcha').seed;
+  await set({ v: 2, mode: 'dark', pal: 'matcha', accent: matchaSeed });
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-palette', 'matcha');
   await expect(page.locator('html')).toHaveClass(/dark/);

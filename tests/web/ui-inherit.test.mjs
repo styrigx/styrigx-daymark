@@ -47,7 +47,7 @@ assert.equal(R({ accent: SEEDS.lake.toUpperCase() }, { mode: null, at: 0 }, fals
 assert.equal(R({ accent: 'rose' }, { mode: null, at: 0 }, false).seed, undefined);
 assert.equal(R({ accent: 'url(x)' }, { mode: null, at: 0 }, false).seed, undefined);
 assert.equal(R({ pal: 'nosuch' }, { mode: null, at: 0 }, false).pal, 'lake');
-assert.equal(palettes.presets.length, 33);
+assert.equal(palettes.presets.length, 22);
 
 /* 6b. applySeed：有缓存（版本 + 种子对）插 style；没缓存返回 false；没有自定义色删 style */
 const fakeDoc = () => {

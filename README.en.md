@@ -30,7 +30,7 @@ A sub-site of Styrigx's Space. Save a line you read, heard or thought of; one pu
 |---|---|
 | Pages | Hugo + Tailwind on Cloudflare Pages (static only) |
 | API | Worker `styrigx-daymark-core` (`workers/core/`) on `daymark.styrigx.com/api/*` |
-| Data | Cloudflare D1 `styrigx-daymark` |
+| Data | Cloudflare D1 `styrigx-daymark-core` |
 | Auth | Holds no keys: the main site's auth gateway checks sessions for pages; the API asks it via a service binding |
 
 ## Shared shell

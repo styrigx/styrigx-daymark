@@ -3,25 +3,25 @@
   "source": "styrigx/styrigx-space",
   "dir": "web/shared/shell",
   "ref": "main",
-  "version": "79e9f350e100",
+  "version": "5cb1baa5ea73",
   "files": {
-    "tokens.css": "4fab2634c833c36d59fa5fb8731053efee26249cdef7f797eac756e6ac76623e",
-    "shell.css": "3129b8f69f3fb04e7667e57f1efed44b1167c2ac1fa9371c688bd158a4f48652",
-    "palette-scheme.js": "ab6d347b23dc2f062f3b7ca5ae1b94543e898864a8f669972e8720d2729c50c4",
+    "tokens.css": "5fe294b92a0fd42079e966ec7d23aba951762447df220783a74f4ec7814b7b43",
+    "shell.css": "f1e3e383439ac5470c145ecb95e8cfdb95423980f60483e02018ad210ada9627",
+    "palette-scheme.js": "c51e4304e54ee888768144ca29bc52898479e79dd7ba4dfdda37e8664e7c2f63",
     "search.js": "d9b091a8cbcf675054e4fcb8ca52dfa7630f9e0bfbdb8a417ab8aafe03973ee8",
-    "nav.json": "665313fb523246fff5dddc1a920abbfe7578438b3d97673d53838bd471f70d32",
-    "palettes.json": "cb95c4e6570ab1cdcb2bb82de30d709a99910157b7e1b435d9d3b9e8b00d5711",
-    "ui-cookie-read.js": "1f3775827eade901a871bc46eef87a629a437547073c81ccee9499324698f0b0",
-    "ui-cookie-contract.json": "c9034a3fbea2f083349fd69e58c9d6f5391ab092df1e11d2ad759b83a957c8fd",
-    "favicon.js": "413b7d6098cb3b611ce1eeaeb0f5562896b8caa6e0984b16f5ce9b7c3ff5ad41",
-    "favicon.svg": "368c680c7554c6cde7f6d374057011a80c564cc08eb5cd3f31af5a4dbc580f07",
-    "README.md": "679086643e740a01489f77586a9b0a854d7e4498600cd47ef6b1fd9922107e5b"
+    "nav.json": "b0e3cc438c8a7cee9a09889880537ff63769de6f82e4beb17c29a9a96b4d32f9",
+    "palettes.json": "8acce76979dfeec50d305c8f84e59a83c56b7bbbfa4b45c2f85d631f90bc3c08",
+    "ui-cookie-read.js": "370a9d39abd0d40fb6a85df597fcd9a34c5ea40bb847c87f57d7f0757d6e70bf",
+    "ui-cookie-contract.json": "677ab3413abcad31e6a170d4c77e999d6cb7c22fe2cbc751332e65b66f7975a0",
+    "favicon.js": "044b254ca9d7069bb9ecba436dedc94a1a5d0fa02078d9c10ac0c2db696f5d62",
+    "favicon.svg": "d0140f4bb1f7fe856fc499f996b347bbbcab55c1f15e2c4a6d94b118c3aa569b",
+    "README.md": "7db15a956ec2adf989cc892d63d9e42fb06fecde65d3674198ad22890a7f17b1"
   },
   "vendored": {
-    "web/assets/css/input.css": "0d57ba928e2e9b1d12f2e2be3c14f88f51b5f7963cf0c68cc4f52ac4a1a71020",
-    "web/assets/js/sgx/shell/palette-scheme.js": "b9d455f8ffb191daa5c13059b4fcb515042194fc76b7364e76174e92c9077216",
+    "web/assets/css/input.css": "aa64f02475db1fa427485ff8f2586ebc5c2378c087f74de9e3a70afcd53b656d",
+    "web/assets/js/sgx/shell/palette-scheme.js": "4d21311374acb7daaf8c2b0c8cda71d99f4a75ee96da3614ed3d95fa458b4b17",
     "web/assets/js/sgx/shell/search.js": "a065ace177d976ce642d8d6a22450f5f15a2efd3202d6144d0e743b860a1724a",
-    "web/assets/sgx-shell/nav.json": "665313fb523246fff5dddc1a920abbfe7578438b3d97673d53838bd471f70d32",
-    "web/assets/sgx-shell/palettes.json": "cb95c4e6570ab1cdcb2bb82de30d709a99910157b7e1b435d9d3b9e8b00d5711"
+    "web/assets/sgx-shell/nav.json": "b0e3cc438c8a7cee9a09889880537ff63769de6f82e4beb17c29a9a96b4d32f9",
+    "web/assets/sgx-shell/palettes.json": "8acce76979dfeec50d305c8f84e59a83c56b7bbbfa4b45c2f85d631f90bc3c08"
   }
 }

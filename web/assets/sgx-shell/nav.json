@@ -10,7 +10,7 @@
       "id": "home",
       "icon": "nav-home",
       "zh": "主站",
-      "en": "Main site",
+      "en": "Space",
       "origin": "https://styrigx.com",
       "path": "/"
     },
@@ -43,7 +43,7 @@
   "me": {
     "zh": "账号",
     "en": "Account",
-    "href": "https://styrigx.com/settings/account/",
+    "href": "https://styrigx.com/account/",
     "avatar": "https://styrigx.com/avatar/192.webp"
   },
   "search": {
