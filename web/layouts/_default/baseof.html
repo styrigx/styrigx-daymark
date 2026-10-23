@@ -18,23 +18,20 @@
 <style>
 @font-face{font-family:'Inter';font-style:normal;font-weight:400 800;font-display:optional;src:url('/fonts/inter-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
 @font-face{font-family:'Inter Fallback';src:local('Arial');size-adjust:107%;ascent-override:90%;descent-override:23%;line-gap-override:0%;}
-:root{--nav-h:68px}/* 顶栏卡片底边位置：16 + 52 */
 </style>
 {{/* 外观 + 语言预读（渲染前）——继承主站 sgx-ui cookie 的深浅色、调色板、强调色、字体大小、减弱动效和语言；
      没有 cookie 时跟系统（日刻没有自己的开关） */}}
 <script>{{ (resources.Get "js/sgx/ui-inherit-run.js" | js.Build (dict "format" "iife" "minify" true "target" "es2018")).Content | safeJS }}</script>
 <script>
-/* 布局模式：<980 手机 / ≥980 DeX（沿用主站断点） */
+/* 布局模式：同主站 baseof __layoutMode() 的自动规则（宽 ≥ 840、高 ≥ 500 且横屏 = DeX，否则 Mobile），
+   外壳框最宽（Mobile 640 / DeX 1440，input.css）跟着它，顶栏两侧圆和主站同一位置。日刻没有自己的布局开关。 */
 function __layoutMode(){
-  var m=null;
-  try{m=localStorage.getItem('sgx-layout')}catch(e){}
-  if(m==='phone'||m==='dex')return m;
-  var w=window.innerWidth||1280;
-  return w<980?'phone':'dex';
+  var w=window.innerWidth||1280,h=window.innerHeight||800;
+  return w>=840&&h>=500&&w>h?'dex':'mobile';
 }
 function __applyLayout(){
   var d=document.documentElement,m=__layoutMode();
-  d.classList.remove('layout-phone','layout-dex');
+  d.classList.remove('layout-mobile','layout-dex');
   d.classList.add('layout-'+m);
 }
 __applyLayout();
