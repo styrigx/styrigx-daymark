@@ -37,7 +37,7 @@ CSS 类名里的 `bk-` 前缀沿用自 styrigx-book 的共用组件（弹层、�
 
 | 位置 | 是什么 |
 |---|---|
-| `wrangler.toml` | 路由 `daymark.styrigx.com/api/*`、D1 绑定 `DB`、网关服务绑定 `AUTH`、全站搜索 KV `SEARCH_KV`、每小时 Cron |
+| `wrangler.toml` | 路由 `daymark.styrigx.com/api/*`、D1 绑定 `D1_QUOTES`、网关服务绑定 `AUTH`、全站搜索 KV `KV_SEARCH_INDEX`、每小时 Cron |
 | `src/index.js` | 入口：`/api/today` 公开，其余先问网关会话 |
 | `src/search-index.js` | 全站搜索索引：句子 → KV `site:daymark`（写接口成功后重建 + Cron 每小时兜底；私密句子 `private:true`） |
 | `src/routes.js` | 路由表（与 `src/api/` 一一对应，测试核对） |

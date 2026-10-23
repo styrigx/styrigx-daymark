@@ -24,7 +24,7 @@ pattern = "daymark.styrigx.com/api/*"
 zone_name = "styrigx.com"
 
 [[d1_databases]]
-binding = "DB"
+binding = "D1_QUOTES"
 database_name = "styrigx-daymark-core"
 database_id = "27f93d06-9cd9-48d9-bd77-8584f68adb1e"
 migrations_dir = "migrations"
@@ -38,7 +38,7 @@ entrypoint = "SessionVerifier"
 # 全站搜索索引：KV styrigx-search-index（主站 workers/search-index 读它），本 Worker 只写 site:daymark 这一条。
 # 写接口成功后重建（src/search-index.js），下面的 Cron 每小时兜底；KV 里只有句子的标题、署名、链接，不是钥匙。
 [[kv_namespaces]]
-binding = "SEARCH_KV"
+binding = "KV_SEARCH_INDEX"
 id = "bd1babcc3fe74d58994e254c74d34ced"
 
 # Cron：每小时第 17 分重建一次搜索索引（首次部署后也靠它填上）。

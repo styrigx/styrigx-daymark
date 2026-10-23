@@ -98,16 +98,16 @@ export async function buildIndex(db, now = Date.now()) {
  */
 export async function rebuildSearchIndex(env, now = Date.now()) {
   try {
-    const kv = env && env.SEARCH_KV;
+    const kv = env && env.KV_SEARCH_INDEX;
     if (!kv || typeof kv.put !== 'function') {
-      console.error('[daymark-search] SEARCH_KV binding missing');
+      console.error('[daymark-search] KV_SEARCH_INDEX binding missing');
       return { ok: false, error: 'kv-binding-missing' };
     }
-    if (!env.DB) {
-      console.error('[daymark-search] DB binding missing');
+    if (!env.D1_QUOTES) {
+      console.error('[daymark-search] D1_QUOTES binding missing');
       return { ok: false, error: 'db-binding-missing' };
     }
-    const value = await buildIndex(env.DB, now);
+    const value = await buildIndex(env.D1_QUOTES, now);
     let body = JSON.stringify(value);
     if (body.length > VALUE_MAX) {
       for (const it of value.items) delete it.text;
