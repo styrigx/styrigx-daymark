@@ -121,7 +121,7 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: workers/core
           wranglerVersion: '4'
-          command: d1 migrations apply styrigx-daymark --remote
+          command: d1 migrations apply styrigx-daymark-core --remote
 
       - name: Deploy styrigx-daymark-core
         # 先部署接口 Worker（路由 daymark.styrigx.com/api/* 优先于 Pages），再部署 Pages。

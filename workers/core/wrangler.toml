@@ -25,8 +25,8 @@ zone_name = "styrigx.com"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "styrigx-daymark"
-database_id = "fe279c28-18e3-4931-b12a-46e344ad36ec"
+database_name = "styrigx-daymark-core"
+database_id = "27f93d06-9cd9-48d9-bd77-8584f68adb1e"
 migrations_dir = "migrations"
 
 # 验票：主站鉴权网关的 RPC 入口（session）。

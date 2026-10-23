@@ -35,7 +35,7 @@ Styrigx's Space 的子站。读到、听到、想到一句好话，打开就记�
 |---|---|
 | 页面 | Hugo + Tailwind，Cloudflare Pages 只放静态文件 |
 | 接口 | Worker `styrigx-daymark-core`（`workers/core/`），路由 `daymark.styrigx.com/api/*` |
-| 数据 | Cloudflare D1 `styrigx-daymark` |
+| 数据 | Cloudflare D1 `styrigx-daymark-core` |
 | 登录 | 不持任何钥匙：页面由主站鉴权网关验会话，接口经服务绑定问网关 |
 
 目录说明见 [STRUCTURE.md](STRUCTURE.md)。
@@ -50,7 +50,7 @@ Styrigx's Space 的子站。读到、听到、想到一句好话，打开就记�
 | `GET /api/collections` | 有效会话 | 百味专题；访客只看到公开句子，空专题不返回 |
 | `POST` / `PUT ?id=` / `DELETE ?id=` `/api/collections` | 主人 + 同源 | 建 / 改名 / 排序（`quote_ids`）/ 删专题 |
 
-数据库迁移在 `workers/core/migrations/`，CI 部署 core 之前自动跑（`d1 migrations apply styrigx-daymark --remote`）。`0003_seed_quotes` 是种子句子（尼采 42 句、《了不起的盖茨比》21 句及两个同名专题）：正文已存在的跳过、同名专题不重建、不删不改任何已有数据。改种子：`node scripts/gen-seed-sql.mjs <quotes.json>` 重新生成（种子原文不进仓库）。
+数据库迁移在 `workers/core/migrations/`，CI 部署 core 之前自动跑（`d1 migrations apply styrigx-daymark-core --remote`）。`0003_seed_quotes` 是种子句子（尼采 42 句、《了不起的盖茨比》21 句及两个同名专题）：正文已存在的跳过、同名专题不重建、不删不改任何已有数据。改种子：`node scripts/gen-seed-sql.mjs <quotes.json>` 重新生成（种子原文不进仓库）。
 
 ## 本地开发
 
