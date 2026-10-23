@@ -65,7 +65,7 @@ test('抽屉：主站共享外壳的 nav.json（主站 / 奇趣 / 日刻 / 博�
   const nav = JSON.parse(readFileSync(path.join(REPO, 'web/assets/sgx-shell/nav.json'), 'utf8'));
   assert.deepEqual(nav.items.map((i) => i.zh), ['主站', '奇趣', '日刻', '博客']);
   assert.deepEqual(nav.footer, []);
-  assert.equal(nav.me.href, 'https://styrigx.com/settings/account/');
+  assert.equal(nav.me.href, 'https://styrigx.com/account/');
   const drawer = base.slice(base.indexOf('<dialog id="sgx-drawer"'), base.indexOf('</dialog>'));
   assert.match(drawer, /range \$shellNav\.items/);
   assert.match(drawer, /with \$shellNav\.footer/);
