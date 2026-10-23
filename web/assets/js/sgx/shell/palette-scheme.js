@@ -1,9 +1,10 @@
-/* @sgx-shell:begin styrigx/styrigx-space@main web/shared/shell v79e9f350e100（scripts/sync-shell.mjs 写入，勿手改） */
+/* @sgx-shell:begin styrigx/styrigx-space@main web/shared/shell v5cb1baa5ea73（scripts/sync-shell.mjs 写入，勿手改） */
 /* ---- palette-scheme.js ---- */
 /**
  * @fileoverview 主题色引擎（PR3 色彩角色 token 的运行时一半）：自定义 #rrggbb 种子 → 整套亮 / 暗色彩角色。
- * 移植自色板设计稿的 scheme.js（OKLCH 色阶、角色构建、对比度审计 + 自动修正、自定义种子派生）和 presets.js（原 13 套手调；2026-10-21 起单色 17 + 撞色 16 = 33 套），
- * 数学和常数一字不改：33 个预设用同一条管线算出来的结果就是 web/data/palette-roles.json（scripts/gen-palettes.mjs 把它生成进 input.css）；
+ * 移植自色板设计稿的 scheme.js（OKLCH 色阶、角色构建、对比度审计 + 自动修正、自定义种子派生）；预设 2026-10-23 PR-G 起是七色调色板 22 套
+ * （1 背景色 + 6 前景撞色，定稿 palette-v0.3，见下面 THEMES），规格由 themeSpec() 从背景 / 前景算出，不再手写：
+ * 22 个预设用同一条管线算出来的结果就是 web/data/palette-roles.json（scripts/gen-palettes.mjs 把它生成进 input.css）；
  * 单测 tests/web/ui/palette-scheme.test.mjs 逐项核对本文件重算出的预设 / 校验种子与 JSON 一致。
  * 不依赖 DOM：rolesFor(seed) 返回 { light, dark } 角色表，rolesCss(seed) 返回可以直接塞进 <style> 的 CSS 文本。
  */
@@ -102,6 +103,34 @@ function displayTone(F) {
   return oklch(TONE.L + TONE.yellowLift * y, F.c * TONE.chroma, F.h);
 }
 
+/* ---------- button fills（2026-10-23 PR-G 修订：填充 vs ink 分工）---------- */
+// 填充（按钮 / 开着的开关 / 进度 / 选中的分段）= 前景 1 本色（浅色 = 色池原值，深色 = fgTones 深色 base），不压深；
+// 上面的字自动挑：同色相的近黑深墨（L 0.24）vs 白，取对比度高的那个，要求 ≥ 4.5:1。都不够时（中间调，如电光蓝）
+// 再试更深的墨（L 0.16 / 0.10）和纯白，取对比度最高的；还不够才把填充本身往反方向挪（色相、彩度不变），所以任何种子都能过。文字 / 链接 / 图标 / 焦点环照旧用压深的 primary（ink）。
+const FILL_INK = { L: 0.24, c: 0.35, cMax: 0.05 };
+function fillPair(fill) {
+  const o = hexToOklch(fill);
+  const ink = oklch(FILL_INK.L, Math.min(o.c * FILL_INK.c, FILL_INK.cMax), o.h), white = oklch(0.99, 0.006, o.h);
+  let on = contrast(ink, fill) >= contrast(white, fill) ? ink : white;
+  if (contrast(on, fill) < 4.5) { // 中间调（电光蓝）：换更深的墨 / 纯白，取对比度最高的
+    for (const c of [oklch(0.16, Math.min(o.c * 0.3, 0.03), o.h), '#ffffff', oklch(0.1, Math.min(o.c * 0.2, 0.02), o.h)]) if (contrast(c, fill) > contrast(on, fill)) on = c;
+  }
+  const dark = hexToOklch(on).l < 0.5;
+  let L = o.l, f = fill;
+  for (let i = 0; i < 100 && contrast(on, f) < 4.5; i++) { L += dark ? 0.005 : -0.005; f = oklch(L, o.c, o.h); }
+  return { fill: f, on };
+}
+// 固定语义状态色：和 danger 一样不随主题变（亮 / 暗各一套，审计核对）。success = 状态页正常、设置安全状态「已开启」；
+// warning（琥珀）/ info（蓝）先只出 token，组件按需接（2026-10-23 PR-G 修订）
+const STATUS = {
+  success: { h: 150, light: { s: [0.50, 0.13], on: [0.99, 0.006], sc: [0.93, 0.05], onSc: [0.32, 0.10] },
+    dark: { s: [0.80, 0.13], on: [0.29, 0.07], sc: [0.37, 0.07], onSc: [0.93, 0.045] } },
+  warning: { h: 65, light: { s: [0.48, 0.11], on: [0.99, 0.006], sc: [0.93, 0.06], onSc: [0.34, 0.09] },
+    dark: { s: [0.82, 0.13], on: [0.30, 0.07], sc: [0.38, 0.07], onSc: [0.93, 0.05] } },
+  info: { h: 250, light: { s: [0.50, 0.13], on: [0.99, 0.006], sc: [0.93, 0.04], onSc: [0.32, 0.10] },
+    dark: { s: [0.80, 0.11], on: [0.29, 0.07], sc: [0.37, 0.07], onSc: [0.93, 0.04] } },
+};
+
 /* ---------- scheme builder ---------- */
 // spec: { seed, p:{h,c,hd?,cd?}, pc:{h?,c?}, s:{h,c}, t:{h,c}, n:{h,c}, d:{h,c}, blobs:[{h,c}x3],
 //         accent:'primary'|'tertiary', state:{light:{...},dark:{...}}, tune:{light:{role:L}, dark:{...}} }
@@ -128,6 +157,11 @@ function build(spec, mode) {
   // 不带字的填充（2026-10-21 polish）：亮色 = 本色中间调（审计只要求在卡片上 ≥ 3:1，控件 / 图形级，不压到文字的 4.5:1）；
   // 暗色 = 暗色辅 / 第三色本身（L 0.80 的浅色调本来就干净，applyAliases 里指过去）
   if (!D) { r['secondary-fill'] = displayTone(S); r['tertiary-fill'] = displayTone(Te); }
+  // 填充档（按钮 / 开关 / 进度 / 选中分段）：前景 1 本色 + 自动挑的 on 色（见 fillPair）
+  { const fp = fillPair(D ? fgTones(spec.seed, 'dark').base : spec.seed); r['primary-fill'] = fp.fill; r['on-primary-fill'] = fp.on; }
+  for (const [k, F] of Object.entries(STATUS)) { const S7 = F[mode];
+    r[k] = oklch(S7.s[0], S7.s[1], F.h); r['on-' + k] = oklch(S7.on[0], S7.on[1], F.h);
+    r[k + '-container'] = oklch(S7.sc[0], S7.sc[1], F.h); r['on-' + k + '-container'] = oklch(S7.onSc[0], S7.onSc[1], F.h); }
   r['danger'] = oklch(t.danger, D ? 0.115 : Dg.c, Dg.h);
   r['on-danger'] = oklch(t.onDanger, D ? 0.09 : 0.006, Dg.h);
   r['danger-container'] = oklch(t.dc, D ? 0.09 : 0.045, Dg.h);
@@ -178,29 +212,35 @@ function build(spec, mode) {
   r['link'] = oklch(t.link, D ? Math.min(aC * 0.8, 0.13) : Math.max(aC, 0.02), aH);
   r['link-visited'] = oklch(t.linkVisited, D ? Math.min(Te.c * 0.8, 0.12) : Te.c, wrap((accent === 'tertiary' ? P.h : Te.h)));
   }
-  // 首页夜间时钟卡（2026-10-21）：取 spec.night 指定色族（p / s / t，默认 p = 单色组的主色深色调）的深色调，彩度保留（不是混黑，暖色混黑会发泥），
-  // 亮 L 0.32 / 暗 L 0.30；上面是白字（≥ 7:1，单测核对）
-  { const nk = spec.night || 'p', F = nk === 'p' ? { h: pH, c: P.c } : nk === 't' ? Te : S;
-    r['night-card'] = oklch(D ? 0.30 : 0.32, Math.min(F.c * (D ? 0.85 : 1), 0.065), F.h); }
+  // 首页夜间时钟卡（特殊功能卡，2026-10-23 PR-G 修订）：不再是整块饱和深色（芥末主色压深后整块发棕），改成克制的局部撞色——
+  // spec.night 指定色族（默认 t = 第三色）的浅底（亮 L 0.905 / 暗 L 0.30，低彩度），CSS 里按材质的 88% 不透明铺；
+  // 字 = 同色相深墨 / 浅色（on-night-card ≥ 7:1，单测核对）
+  { const nk = spec.night || 't', F = nk === 'p' ? { h: pH, c: P.c } : nk === 't' ? Te : S;
+    r['night-card'] = oklch(D ? 0.30 : 0.905, Math.min(F.c * (D ? 0.45 : 0.35), D ? 0.05 : 0.045), F.h);
+    r['on-night-card'] = oklch(D ? 0.93 : 0.27, Math.min(F.c * 0.5, 0.07), F.h); }
   Object.defineProperty(r, '__dark', { value: D, enumerable: false });
   applyAliases(r, spec);
   return r;
 }
 
 // 导航抽屉当前项药丸的亮度（OKLCH L）：bg = 药丸，fg = 药丸上的文字 / 图标
-const NAV_SEL = { light: { bg: 0.83, fg: 0.29 }, dark: { bg: 0.365, fg: 0.93 } };
+// 2026-10-23 PR-G：材质（--sgx-mat）不再混主色，暗色面板更深，药丸 0.365 → 0.34，对面板仍约 1.5–1.65:1（不刺眼）
+const NAV_SEL = { light: { bg: 0.83, fg: 0.29 }, dark: { bg: 0.34, fg: 0.93 } };
 function applyAliases(r, spec) {
   // interactive roles
   const D = r.__dark;
   const accent = spec.accent === 'tertiary' ? 'tertiary' : 'primary';
   r['focus-ring'] = r[accent];
-  r['switch-track-on'] = r[accent];
-  r['switch-thumb-on'] = r['on-' + accent];
+  // 开关开着 = 填充档（primary-fill / on-primary-fill）；第三色强调（accent = tertiary）照旧用 tertiary
+  const fillK = accent === 'primary' ? 'primary-fill' : accent;
+  r['switch-track-on'] = r[fillK];
+  r['switch-thumb-on'] = r['on-' + fillK];
   r['switch-track-off'] = r['surface-container-highest'];
   r['switch-thumb-off'] = r['outline'];
   // 滑块 / 进度：默认 = 强调色（单色组）；撞色组 spec.slider = 'secondary'（One UI 快捷面板：磁贴主色、滑块另一个色相），石墨×湖蓝 = tertiary
+  // 2026-10-23 PR-G 修订：已填的那段 = 填充档（primary-fill），滑块圆点 = ink（primary，表面上 ≥ 4.5:1，浅填充时状态靠圆点认）
   const sl = spec.slider || accent;
-  r['slider-active'] = r[sl];
+  r['slider-active'] = r[sl === 'primary' ? 'primary-fill' : sl];
   r['slider-inactive'] = r[sl + '-container'];
   r['slider-thumb'] = r[sl];
   if (D) { r['secondary-fill'] = r['secondary']; r['tertiary-fill'] = r['tertiary']; }
@@ -227,8 +267,8 @@ function applyAliases(r, spec) {
   r['lock-meta'] = r['text-secondary'];
   r['lock-quote'] = r['on-tertiary-container'];
   r['lock-quote-bg'] = rgba(r['tertiary-container'], D ? 0.55 : 0.6);
-  r['lock-unlock'] = r['primary'];
-  r['on-lock-unlock'] = r['on-primary'];
+  r['lock-unlock'] = r['primary-fill'];
+  r['on-lock-unlock'] = r['on-primary-fill'];
   r['daymark-card'] = r['surface-container-lowest'];
   r['daymark-mark'] = rgba(r['tertiary'], D ? 0.14 : 0.10);
   r['daymark-label'] = r['tertiary'];
@@ -246,7 +286,7 @@ const STATE_DEFAULT = {
 const SURF = ['background', 'surface', 'surface-dim', 'surface-bright', 'surface-container-lowest', 'surface-container-low', 'surface-container', 'surface-container-high', 'surface-container-highest'];
 function checks() {
   const c = [];
-  for (const k of ['primary', 'secondary', 'tertiary', 'danger']) {
+  for (const k of ['primary', 'secondary', 'tertiary', 'danger', 'success', 'warning', 'info']) {
     c.push(['on-' + k, k, 4.5, 'text']);
     c.push(['on-' + k + '-container', k + '-container', 4.5, 'text']);
   }
@@ -260,19 +300,27 @@ function checks() {
     c.push(['link', s, 4.5, 'text']);
     c.push(['primary', s, 4.5, 'text']); // primary used for titles / text buttons
     c.push(['danger', s, 4.5, 'text']);
+    c.push(['success', s, 4.5, 'text']);
+    c.push(['warning', s, 4.5, 'text']);
+    c.push(['info', s, 4.5, 'text']);
   }
+  // 填充档上的字（主按钮 / 选中分段 / 开着的磁贴图标圆）
+  c.push(['on-primary-fill', 'primary-fill', 4.5, 'text']);
   for (const s of ['surface', 'surface-container-lowest', 'surface-container', 'surface-container-high']) {
     c.push(['outline', s, 3, 'ui']);
     c.push(['focus-ring', s, 3, 'ui']);
-    c.push(['switch-track-on', s, 3, 'ui']);
-    c.push(['slider-active', s, 3, 'ui']);
+    // 开关 / 滑块的「开着」在表面上 ≥ 3:1（WCAG 1.4.11）：填充档是本色、浅色（芥末）本身不到 3:1 时，
+    // 由圆点（on-primary-fill 深墨 / 滑块 ink）承担，所以量「轨道和圆点里对比度高的那个」
+    c.push(['@switch-on', s, 3, 'ui']);
+    c.push(['@slider-on', s, 3, 'ui']);
   }
   // 不带字的填充（屏幕时间分段 / 存储条 / 图例圆点）：在卡片上 ≥ 3:1（图形级）
   c.push(['secondary-fill', 'surface-container-lowest', 3, 'ui']);
   c.push(['tertiary-fill', 'surface-container-lowest', 3, 'ui']);
   c.push(['switch-thumb-on', 'switch-track-on', 3, 'ui']);
   c.push(['switch-thumb-off', 'switch-track-off', 3, 'ui']);
-  c.push(['slider-active', 'slider-inactive', 3, 'ui']);
+  c.push(['slider-thumb', 'slider-inactive', 3, 'ui']);
+  c.push(['on-night-card', 'night-card', 7, 'text']);
   c.push(['on-chip-selected', 'chip-selected', 4.5, 'text']);
   c.push(['on-nav-selected', 'nav-selected', 4.5, 'text']);
   c.push(['on-fab', 'fab', 4.5, 'text']);
@@ -281,6 +329,13 @@ function checks() {
   c.push(['text-primary', '@topbar-on-blob', 4.5, 'text']);
   c.push(['text-primary', '@topbar-on-bg', 4.5, 'text']);
   return c;
+}
+// 合成前景：同一个控件的两部分，取对表面对比度高的那个
+function resolveFg(r, key, bg) {
+  const pick = (a, b) => (contrast(r[a], bg) >= contrast(r[b], bg) ? r[a] : r[b]);
+  if (key === '@switch-on') return pick('switch-track-on', 'switch-thumb-on');
+  if (key === '@slider-on') return pick('slider-active', 'slider-thumb');
+  return r[key];
 }
 function resolveBg(r, key) {
   if (key === '@topbar-on-blob') return over(r['topbar-glass'], r['bg-blob-1']);
@@ -292,8 +347,9 @@ function audit(r, spec, mode, fix = true) {
   const fixes = [];
   const accent = spec.accent === 'tertiary' ? 'tertiary' : 'primary';
   const sl = spec.slider || accent;
-  const SRC = { 'focus-ring': accent, 'switch-track-on': accent, 'slider-active': sl, 'slider-thumb': sl,
-    'switch-thumb-on': 'on-' + accent, 'switch-thumb-off': 'outline', 'slider-inactive': sl + '-container',
+  const fillK = accent === 'primary' ? 'primary-fill' : accent;
+  const SRC = { 'focus-ring': accent, 'switch-track-on': fillK, 'slider-active': sl === 'primary' ? 'primary-fill' : sl, 'slider-thumb': sl,
+    'switch-thumb-on': 'on-' + fillK, 'lock-unlock': 'primary-fill', 'on-lock-unlock': 'on-primary-fill', 'switch-thumb-off': 'outline', 'slider-inactive': sl + '-container',
     'daymark-label': 'tertiary', 'lock-quote': 'on-tertiary-container', 'on-chip-selected': 'on-secondary-container',
     'chip-selected': 'secondary-container', 'on-fab': 'on-primary-container', 'fab': 'primary-container',
     'lock-clock': 'text-primary', 'daymark-text': 'text-primary', 'lock-meta': 'text-secondary' };
@@ -302,11 +358,13 @@ function audit(r, spec, mode, fix = true) {
     let changed = false;
     for (const [fgK, bgK, min] of checks()) {
       const bg = resolveBg(r, bgK);
-      if (contrast(r[fgK], bg) >= min - 1e-9) continue;
+      if (contrast(resolveFg(r, fgK, bg), bg) >= min - 1e-9) continue;
+      if (fgK.startsWith('@')) continue;
       // which side to move: normally the foreground; the light seed primary is locked.
       let target = sourceOf(fgK), against = bg, moveFg = true;
-      if (fgK === 'slider-active' && bgK === 'slider-inactive') { target = sourceOf('slider-inactive'); against = r['slider-active']; moveFg = false; }
+      if (fgK === 'slider-thumb' && bgK === 'slider-inactive') { target = sourceOf('slider-inactive'); against = r['slider-thumb']; moveFg = false; }
       if (target === 'primary' && mode === 'light') { target = null; }
+      if (target === 'primary-fill') { target = null; } // 填充档 = 前景本色，锁定（fillPair 已保证上面的字够）
       if (fgK === 'on-primary' && false) target = null;
       if (!target || !r[target] || !r[target].startsWith('#')) continue;
       const o = hexToOklch(r[target]); const refL = hexToOklch(against).l;
@@ -317,7 +375,7 @@ function audit(r, spec, mode, fix = true) {
     }
     if (!changed) break;
   }
-  const rows = checks().map(([fgK, bgK, min, kind]) => { const v = contrast(r[fgK], resolveBg(r, bgK)); return { fg: fgK, bg: bgK, min, kind, ratio: +v.toFixed(2), pass: v >= min - 1e-9 }; });
+  const rows = checks().map(([fgK, bgK, min, kind]) => { const b = resolveBg(r, bgK), v = contrast(resolveFg(r, fgK, b), b); return { fg: fgK, bg: bgK, min, kind, ratio: +v.toFixed(2), pass: v >= min - 1e-9 }; });
   rows.push({ fg: 'text-disabled', bg: 'surface', min: 0, kind: 'info (WCAG-exempt)', ratio: +contrast(over(r['text-disabled'], r['surface']), r['surface']).toFixed(2), pass: true });
   return { fixes, rows };
 }
@@ -367,163 +425,116 @@ function deriveSpec(seed, presets) {
 }
 
 
-/* ---------- 33 preset specs (presets.js; 2026-10-21: group mono 17 + group clash 16) ---------- */
-// 33 preset specs (OKLCH hue h in degrees, chroma c). Light primary = seed hex, untouched (except p.fit: darkened for AA, chroma p.lc).
-// group 'clash' (One UI-style): s and t come from clearly different hue families (~45–150° from p), n = pale wash hue for page /
-// surfaces (may differ from p), blobs = n + s + t. night = family of the home night-clock card (p / s / t, default p);
-// slider = family of sliders / progress (default = accent). Custom seeds derive from the mono group only.
-// p.hd / p.cd = dark-mode primary hue / chroma override. pc = light primary-container hue/chroma override.
-// s = secondary, t = tertiary, n = neutral tint, d = danger, blobs = 3 background accent blobs.
-// accent = which family drives focus ring / switch / slider / link (graphite uses its one cool accent).
+/* ---------- 七色调色板（2026-10-23 PR-G，定稿 palette-v0.3）：22 套 = 1 个背景色 + 6 个前景撞色 ---------- */
+// 三层（上层怎么取色见 input.css「调色板三层」注释）：
+//   背景层 = 背景色派生的 7 档深浅（bgTones，--sgx-bg-1..7），只给光晕 / 页面底用；
+//   材质层 = 中性色（玻璃顶栏、抽屉、卡片、弹层、输入框），只带一点背景色相（spec.n.c ≤ 0.012），不带饱和主题色；
+//   主题色层 = 6 个前景色（fgTones，--sgx-fg-1..6 + -tint / -ink），按顺序：主交互 / 辅助强调 / 标题图标 / 标签装饰 / 图表装饰 / 低频点缀。
+// 接进原来的角色引擎（现 94 个）（组件照旧只用语义角色）：primary ← 前景 1（浅色按对比度压深，p.fit），secondary ← 前景 2，tertiary ← 前景 3，
+// neutral = 背景色相 + 小彩度，背景三团 blob = 背景色，danger 固定红色族（不随主题变）。
+// 前景色池：浅色模式色值（深色模式按 fgTones 提亮）
+const FG_POOL = {
+  兰紫: '#a77bd6', 冰川蓝: '#72c7e8', 珊瑚: '#f17f72', 琥珀: '#e3a93b', 极光青: '#42cdbb', 蔷薇: '#d4628f',
+  电光蓝: '#536dfa', 莓果: '#b54a88', 香槟金: '#c5a66a', 抹茶: '#86ad3f', 雾霾蓝: '#7a95ab', 芥末: '#d4a72c',
+  鼠尾草: '#94a982', 干枯玫瑰: '#cf9494', 陶土: '#c46a43', 石墨: '#6b6e75',
+  橘子: '#f08a3c', 杏: '#f2a86b', 樱桃: '#d6334a', 霓虹粉: '#f2559b', 湖蓝: '#4f86b5', 孔雀蓝: '#168f9c',
+};
+const FG_ROLES = ['主交互', '辅助强调', '标题图标', '标签装饰', '图表装饰', '低频点缀'];
+// 背景 7 档：浅色从页面底（L 0.97）往深走，深色从页面底（L 0.16）往亮走；彩度按档位放大，封顶 0.14
+const BG_TONES = {
+  light: { L: [0.97, 0.93, 0.89, 0.84, 0.78, 0.71, 0.63], k: [0.12, 0.3, 0.45, 0.6, 0.75, 0.85, 1] },
+  dark: { L: [0.16, 0.22, 0.28, 0.34, 0.4, 0.47, 0.55], k: [0.25, 0.4, 0.55, 0.7, 0.8, 0.9, 1] },
+};
+/** 背景色 → 7 档深浅（index 0 = 页面底） @param {string} hex @param {'light'|'dark'} mode @returns {string[]} */
+export function bgTones(hex, mode) {
+  const o = hexToOklch(hex), c = Math.max(o.c, 0.006), T7 = BG_TONES[mode];
+  const h = o.c < 0.01 ? 250 : o.h; // 无彩背景（石墨）：色相没有意义，按中性色的冷灰 250° 取
+  return T7.L.map((L, i) => oklch(L, Math.min(c * T7.k[i], 0.14), h));
+}
+/** 前景色按场景取深浅：tint = 标签 / 选中底，base = 按钮 / 进度 / 填充，ink = 文字 / 图标（浅色压深、深色提亮）
+ *  @param {string} hex @param {'light'|'dark'} mode @returns {{tint:string, base:string, ink:string}} */
+export function fgTones(hex, mode) {
+  const o = hexToOklch(hex), c = Math.min(o.c, 0.17);
+  if (mode !== 'dark') return { tint: oklch(0.93, Math.min(c * 0.35, 0.05), o.h), base: hex, ink: oklch(Math.min(o.l, 0.5), Math.min(c * 1.05, 0.16), o.h) };
+  return { tint: oklch(0.32, Math.min(c * 0.45, 0.06), o.h), base: oklch(Math.max(o.l, 0.78), Math.min(o.c, 0.13), o.h), ink: oklch(0.88, Math.min(c * 0.6, 0.09), o.h) };
+}
+/** 背景 7 档 + 前景 6 色四档 → 色调 token（--sgx-bg-N、--sgx-fg-N、--sgx-fg-N-tint、--sgx-fg-N-ink、--sgx-fg-N-on）
+ *  @param {{bg:string, fg:string[]}} th @param {'light'|'dark'} mode @returns {Object<string,string>} */
+export function tonesFor(th, mode) {
+  const out = {};
+  bgTones(th.bg, mode).forEach((c, i) => { out['bg-' + (i + 1)] = c; });
+  th.fg.forEach((hex, i) => {
+    const t = fgTones(hex, mode);
+    out['fg-' + (i + 1)] = t.base; out['fg-' + (i + 1) + '-tint'] = t.tint; out['fg-' + (i + 1) + '-ink'] = t.ink;
+    // 本色当填充时上面的字（fill / on-fill，2026-10-23 PR-G 修订；同 primary-fill 的 fillPair 规则，子站按需取）
+    out['fg-' + (i + 1) + '-on'] = fillPair(t.base).on;
+  });
+  return out;
+}
+
 const st = (l, d) => ({ light: { color: 'on-surface', ...l }, dark: { color: 'on-surface', ...d } });
 const STD = st({ hover: 0.08, focus: 0.10, pressed: 0.12, selected: 0.10, dragged: 0.16 }, { hover: 0.08, focus: 0.12, pressed: 0.14, selected: 0.12, dragged: 0.18 });
-// saturated presets read stronger: tint state layers with primary and pull opacity down in light
-const VIVID = st({ color: 'primary', hover: 0.06, focus: 0.09, pressed: 0.11, selected: 0.09, dragged: 0.14 }, { color: 'primary', hover: 0.08, focus: 0.11, pressed: 0.13, selected: 0.12, dragged: 0.16 });
 // warm cream surfaces swallow grey overlays — slightly stronger
 const WARM = st({ hover: 0.07, focus: 0.10, pressed: 0.12, selected: 0.10, dragged: 0.16, color: 'on-surface' }, { hover: 0.09, focus: 0.12, pressed: 0.15, selected: 0.13, dragged: 0.18 });
-// monochrome needs the clearest cue, no hue to help
+// monochrome / near-white backgrounds need the clearest cue
 const MONO = st({ hover: 0.09, focus: 0.12, pressed: 0.14, selected: 0.12, dragged: 0.18 }, { hover: 0.10, focus: 0.14, pressed: 0.16, selected: 0.14, dragged: 0.20 });
 
-// 两组色板（2026-10-21）：
-//   group 'mono'（单色，17 套）：原来的 13 套（规格与 cfec8af 一字不差）+ 4 套低饱和单色；默认 lake 在这一组（默认色取自头像，单色最稳妥）。
-//   group 'clash'（撞色，16 套，id = x + 底色名）：One UI 调色板式——主色 = 同名单色的种子，辅色、第三色取明显不同的色相族
-//     （约 45–150°，不用邻近色），中性色调 n 铺页面底和表面，背景三团光 = n + s + t；slider = 'secondary'（滑块 / 进度取辅色），
-//     night = 首页夜间时钟卡取哪个色族的深色调。
-const PRESETS = [
-  { id: 'lake', zh: '默认', en: 'Default', seed: '#2f5f86', group: 'mono',
-    mood: { zh: '清晨湖面：湖蓝为主，岸边海玻璃绿与一抹薄雾淡紫。', en: 'Lake at first light — slate-blue water, sea-glass shallows, a lavender haze.' },
-    spec: { p: { h: 245.4, c: 0.082, cd: 0.085 }, s: { h: 238, c: 0.035 }, t: { h: 172, c: 0.062 }, n: { h: 240, c: 0.008 }, d: { h: 27, c: 0.19 },
-      blobs: [{ h: 245, c: 0.042 }, { h: 168, c: 0.040 }, { h: 300, c: 0.035 }], accent: 'primary', state: STD } },
-  { id: 'forest', zh: '山绿', en: 'Forest', seed: '#2f6b4f', group: 'mono',
-    mood: { zh: '雨后山径：松针绿、苔藓与远山的雾蓝。', en: 'Mountain trail after rain — pine green, moss, misty blue ridges.' },
-    spec: { p: { h: 161.1, c: 0.078, cd: 0.085 }, s: { h: 138, c: 0.034 }, t: { h: 228, c: 0.052 }, n: { h: 155, c: 0.007 }, d: { h: 27, c: 0.19 },
-      blobs: [{ h: 158, c: 0.040 }, { h: 225, c: 0.035 }, { h: 115, c: 0.040 }], accent: 'primary', state: STD } },
-  { id: 'terra', zh: '陶土', en: 'Terracotta', seed: '#8a4b2d', group: 'mono',
-    mood: { zh: '晒过太阳的陶罐：陶土配鼠尾草绿与细沙。', en: 'Sun-baked clay — terracotta with sage leaves and fine sand.' },
-    spec: { p: { h: 45.2, c: 0.096, cd: 0.085 }, pc: { h: 50, c: 0.05 }, s: { h: 72, c: 0.042 }, t: { h: 135, c: 0.050 }, n: { h: 70, c: 0.010 }, d: { h: 22, c: 0.20 },
-      blobs: [{ h: 52, c: 0.045 }, { h: 85, c: 0.045 }, { h: 135, c: 0.035 }], accent: 'primary', state: WARM, tune: { light: { bg: 0.965 } } } },
-  { id: 'violet', zh: '紫', en: 'Violet', seed: '#6750a4', group: 'mono',
-    mood: { zh: '黄昏薰衣草：柔紫、灰丁香与一点暮色玫瑰。', en: 'Dusk lavender — soft violet, grey lilac, a blush of twilight rose.' },
-    spec: { p: { h: 293.7, c: 0.130 }, s: { h: 300, c: 0.036 }, t: { h: 5, c: 0.062 }, n: { h: 295, c: 0.009 }, d: { h: 25, c: 0.19 },
-      blobs: [{ h: 295, c: 0.045 }, { h: 350, c: 0.035 }, { h: 262, c: 0.040 }], accent: 'primary', state: STD } },
-  { id: 'rose', zh: '蔷薇', en: 'Rose', seed: '#984061', group: 'mono',
-    mood: { zh: '傍晚花园：蔷薇、灰调藕荷与一抹杏色。', en: 'Garden rose at dusk — rose, dusty mauve, a hint of apricot.' },
-    spec: { p: { h: 359, c: 0.123, cd: 0.10 }, s: { h: 345, c: 0.036 }, t: { h: 58, c: 0.070 }, n: { h: 355, c: 0.009 }, d: { h: 33, c: 0.19 },
-      blobs: [{ h: 0, c: 0.042 }, { h: 55, c: 0.042 }, { h: 318, c: 0.032 }], accent: 'primary', state: STD } },
-  { id: 'cherry', zh: '樱桃', en: 'Cherry', seed: '#ba1a20', group: 'mono',
-    mood: { zh: '枝头樱桃：果红配樱花粉和一片嫩叶，像水果不像报错。', en: 'Cherries on the branch — fruit red with blossom pink and a fresh leaf; reads as fruit, not an error.' },
-    spec: { p: { h: 26.3, c: 0.192, hd: 14, cd: 0.115 }, pc: { h: 8, c: 0.065 }, s: { h: 355, c: 0.048 }, t: { h: 150, c: 0.058 }, n: { h: 10, c: 0.008 }, d: { h: 40, c: 0.17 },
-      blobs: [{ h: 355, c: 0.045 }, { h: 45, c: 0.040 }, { h: 140, c: 0.032 }], accent: 'primary', state: VIVID } },
-  { id: 'tangerine', zh: '橘子', en: 'Tangerine', seed: '#b02e00', group: 'mono',
-    mood: { zh: '地中海柑橘：橘皮、黄油般的阳光和一汪海水。', en: 'Mediterranean citrus — peel orange, buttery sun, a splash of sea.' },
-    spec: { p: { h: 35.8, c: 0.173, cd: 0.12 }, pc: { h: 45, c: 0.07 }, s: { h: 62, c: 0.045 }, t: { h: 212, c: 0.060 }, n: { h: 60, c: 0.009 }, d: { h: 12, c: 0.20 },
-      blobs: [{ h: 48, c: 0.050 }, { h: 95, c: 0.055 }, { h: 205, c: 0.035 }], accent: 'primary', state: VIVID } },
-  { id: 'amber', zh: '琥珀', en: 'Amber', seed: '#825500', group: 'mono',
-    mood: { zh: '午后蜂蜜与无花果：琥珀、古铜和熟透的梅子紫。', en: 'Honey and figs in afternoon light — amber, bronze, ripe plum.' },
-    spec: { p: { h: 73.8, c: 0.103, cd: 0.11 }, s: { h: 62, c: 0.040 }, t: { h: 345, c: 0.055 }, n: { h: 78, c: 0.010 }, d: { h: 25, c: 0.19 },
-      blobs: [{ h: 78, c: 0.055 }, { h: 98, c: 0.045 }, { h: 350, c: 0.032 }], accent: 'primary', state: WARM } },
-  { id: 'matcha', zh: '抹茶', en: 'Matcha', seed: '#3c6a00', group: 'mono',
-    mood: { zh: '茶席：抹茶绿、竹青与焙茶陶杯的暖褐。', en: 'Tea ceremony — matcha, young bamboo, a warm hojicha cup.' },
-    spec: { p: { h: 132.8, c: 0.133, cd: 0.12 }, s: { h: 115, c: 0.036 }, t: { h: 55, c: 0.052 }, n: { h: 110, c: 0.009 }, d: { h: 27, c: 0.19 },
-      blobs: [{ h: 128, c: 0.050 }, { h: 95, c: 0.040 }, { h: 60, c: 0.032 }], accent: 'primary', state: WARM } },
-  { id: 'teal', zh: '青碧', en: 'Teal', seed: '#00696b', group: 'mono',
-    mood: { zh: '翡翠泻湖：青碧海水、浅滩灰与珊瑚。', en: 'Jade lagoon — teal water, sandbar grey, living coral.' },
-    spec: { p: { h: 197.1, c: 0.080, cd: 0.09 }, s: { h: 205, c: 0.030 }, t: { h: 32, c: 0.075 }, n: { h: 200, c: 0.008 }, d: { h: 20, c: 0.20 },
-      blobs: [{ h: 195, c: 0.045 }, { h: 40, c: 0.038 }, { h: 232, c: 0.032 }], accent: 'primary', state: STD } },
-  { id: 'indigo', zh: '靛蓝', en: 'Indigo', seed: '#3d4fd3', group: 'mono',
-    mood: { zh: '夜墨与霓虹晨光：靛蓝、钢灰蓝、一道电光青。', en: 'Night ink meets neon dawn — indigo, steel periwinkle, an electric cyan streak.' },
-    spec: { p: { h: 271, c: 0.202, cd: 0.11 }, s: { h: 268, c: 0.040 }, t: { h: 215, c: 0.075 }, n: { h: 270, c: 0.009 }, d: { h: 25, c: 0.19 },
-      blobs: [{ h: 272, c: 0.050 }, { h: 215, c: 0.040 }, { h: 320, c: 0.032 }], accent: 'primary', state: VIVID } },
-  { id: 'orchid', zh: '兰紫', en: 'Orchid', seed: '#a62092', group: 'mono',
-    mood: { zh: '热带兰花：洋红兰瓣、灰藕荷与花心的金。', en: 'Tropical orchid — magenta petals, mauve grey, a gold heart.' },
-    spec: { p: { h: 335.3, c: 0.203, cd: 0.12 }, pc: { h: 335, c: 0.075 }, s: { h: 328, c: 0.040 }, t: { h: 85, c: 0.070 }, n: { h: 330, c: 0.009 }, d: { h: 27, c: 0.19 },
-      blobs: [{ h: 335, c: 0.048 }, { h: 62, c: 0.040 }, { h: 292, c: 0.038 }], accent: 'primary', state: VIVID } },
-  // 低饱和四套单色（2026-10-21）：种子是莫兰迪色，浅色主色按对比度压深（p.fit，压深后彩度 p.lc），色块仍显示种子本色
-  { id: 'dustyblue', zh: '雾霾蓝', en: 'Dusty Blue', seed: '#78909c', group: 'mono',
-    mood: { zh: '阴天的旧牛仔：雾霾蓝的深浅，像洗旧的丹宁。', en: 'Overcast denim — tonal steps of a washed dusty blue.' },
-    spec: { p: { h: 229.5, c: 0.033, lc: 0.048, cd: 0.055, fit: true }, pc: { h: 229.5, c: 0.032 }, s: { h: 225, c: 0.022 }, t: { h: 208, c: 0.035 }, n: { h: 230, c: 0.007 }, d: { h: 27, c: 0.19 },
-      blobs: [{ h: 230, c: 0.030 }, { h: 210, c: 0.025 }, { h: 250, c: 0.022 }], accent: 'primary', state: STD } },
-  { id: 'mustard', zh: '芥末黄', en: 'Mustard', seed: '#d4a72c', group: 'mono',
-    mood: { zh: '复古毛衣：芥末黄、姜黄与一点焦糖。', en: 'Vintage knit — mustard, turmeric and a touch of caramel.' },
-    spec: { p: { h: 87.1, c: 0.141, lc: 0.110, cd: 0.12, fit: true }, pc: { h: 87, c: 0.070 }, s: { h: 80, c: 0.040 }, t: { h: 66, c: 0.060 }, n: { h: 88, c: 0.011 }, d: { h: 27, c: 0.19 },
-      blobs: [{ h: 88, c: 0.050 }, { h: 75, c: 0.040 }, { h: 95, c: 0.035 }], accent: 'primary', state: WARM } },
-  { id: 'sage', zh: '鼠尾草绿', en: 'Sage', seed: '#9caf88', group: 'mono',
-    mood: { zh: '香草小园：鼠尾草、迷迭香和晒干的叶子。', en: 'Herb garden — sage, rosemary and sun-dried leaves.' },
-    spec: { p: { h: 128.9, c: 0.059, lc: 0.070, cd: 0.07, fit: true }, pc: { h: 128.9, c: 0.045 }, s: { h: 125, c: 0.030 }, t: { h: 145, c: 0.040 }, n: { h: 120, c: 0.008 }, d: { h: 27, c: 0.19 },
-      blobs: [{ h: 125, c: 0.035 }, { h: 145, c: 0.030 }, { h: 105, c: 0.025 }], accent: 'primary', state: STD } },
-  { id: 'dustyrose', zh: '干枯玫瑰', en: 'Dusty Rose', seed: '#d8a7a7', group: 'mono',
-    mood: { zh: '夹在书里的花：干枯玫瑰的深浅，像褪色的花瓣。', en: 'Pressed flowers — tonal steps of a faded dried rose.' },
-    spec: { p: { h: 18.5, c: 0.058, lc: 0.085, cd: 0.075, fit: true }, pc: { h: 15, c: 0.045 }, s: { h: 12, c: 0.030 }, t: { h: 355, c: 0.040 }, n: { h: 18, c: 0.009 }, d: { h: 30, c: 0.19 },
-      blobs: [{ h: 18, c: 0.035 }, { h: 355, c: 0.028 }, { h: 35, c: 0.025 }], accent: 'primary', state: STD } },
-  { id: 'graphite', zh: '石墨', en: 'Graphite', seed: '#5e5e5e', group: 'mono',
-    mood: { zh: '铅笔与钢：近乎单色的石墨灰，只留一道冷蓝做点睛。', en: 'Pencil and steel — near-monochrome graphite with a single cool-blue accent.' },
-    spec: { p: { h: 250, c: 0.0, cd: 0.004 }, pc: { h: 250, c: 0.006 }, s: { h: 250, c: 0.008 }, t: { h: 240, c: 0.115 }, n: { h: 250, c: 0.004 }, d: { h: 25, c: 0.18 },
-      blobs: [{ h: 250, c: 0.010 }, { h: 235, c: 0.022 }, { h: 250, c: 0.006 }], accent: 'tertiary', state: MONO } },
-  { id: 'xforest', zh: '山绿×橘子', en: 'Forest × Tangerine', seed: '#2f6b4f', group: 'clash',
-    mood: { zh: '雨后山径：松针绿撞一抹橘子橙（像林间的灯），远山是雾蓝，底色是奶油。', en: 'Mountain trail after rain — pine green against a tangerine lantern, misty-blue ridges, a cream sky.' },
-    spec: { p: { h: 161.1, c: 0.078, cd: 0.085 }, s: { h: 42, c: 0.110 }, t: { h: 228, c: 0.055 }, n: { h: 105, c: 0.011 }, d: { h: 22, c: 0.20 },
-      blobs: [{ h: 105, c: 0.038 }, { h: 42, c: 0.034 }, { h: 228, c: 0.032 }], accent: 'primary', slider: 'secondary', night: 't', state: STD } },
-  { id: 'xterra', zh: '陶土×鼠尾草', en: 'Terracotta × Sage', seed: '#8a4b2d', group: 'clash',
-    mood: { zh: '晒过太阳的陶罐：陶土撞鼠尾草绿，罐口一圈灰蓝釉，底下是细沙。', en: 'Sun-baked clay — terracotta against sage, a ring of dusty-blue glaze, fine sand below.' },
-    spec: { p: { h: 45.2, c: 0.096, cd: 0.085 }, pc: { h: 50, c: 0.05 }, s: { h: 140, c: 0.055 }, t: { h: 240, c: 0.055 }, n: { h: 75, c: 0.013 }, d: { h: 22, c: 0.20 },
-      blobs: [{ h: 75, c: 0.042 }, { h: 140, c: 0.034 }, { h: 240, c: 0.030 }], accent: 'primary', slider: 'secondary', night: 't', state: WARM, tune: { light: { bg: 0.965 } } } },
-  { id: 'xviolet', zh: '紫×蔷薇', en: 'Violet × Rose', seed: '#6750a4', group: 'clash',
-    mood: { zh: '黄昏薰衣草：柔紫配暮色玫瑰，草地上一点薄荷绿。', en: 'Dusk lavender — soft violet with twilight rose and a touch of mint.' },
-    spec: { p: { h: 293.7, c: 0.130 }, s: { h: 355, c: 0.075 }, t: { h: 175, c: 0.070 }, n: { h: 300, c: 0.012 }, d: { h: 25, c: 0.19 },
-      blobs: [{ h: 300, c: 0.042 }, { h: 355, c: 0.036 }, { h: 175, c: 0.032 }], accent: 'primary', slider: 'secondary', night: 't', state: STD } },
-  { id: 'xrose', zh: '蔷薇×杏', en: 'Rose × Apricot', seed: '#984061', group: 'clash',
-    mood: { zh: '傍晚花园：蔷薇撞杏色，叶子是鼠尾草绿，晚风带一点粉。', en: 'Garden rose at dusk — rose against apricot, sage leaves, a blush in the air.' },
-    spec: { p: { h: 359, c: 0.123, cd: 0.10 }, s: { h: 55, c: 0.085 }, t: { h: 150, c: 0.055 }, n: { h: 10, c: 0.012 }, d: { h: 33, c: 0.19 },
-      blobs: [{ h: 10, c: 0.040 }, { h: 55, c: 0.040 }, { h: 150, c: 0.030 }], accent: 'primary', slider: 'secondary', night: 't', state: STD } },
-  { id: 'xcherry', zh: '樱桃×嫩叶', en: 'Cherry × Leaf', seed: '#ba1a20', group: 'clash',
-    mood: { zh: '枝头樱桃：果红配嫩叶绿和花蕊的奶油黄，底色是樱花粉。', en: 'Cherries on the branch — fruit red, fresh leaf, buttery stamens on blossom pink.' },
-    spec: { p: { h: 26.3, c: 0.192, hd: 14, cd: 0.115 }, pc: { h: 8, c: 0.065 }, s: { h: 140, c: 0.065 }, t: { h: 92, c: 0.090 }, n: { h: 5, c: 0.012 }, d: { h: 40, c: 0.17 },
-      blobs: [{ h: 5, c: 0.042 }, { h: 140, c: 0.032 }, { h: 92, c: 0.040 }], accent: 'primary', slider: 'secondary', night: 's', state: VIVID } },
-  { id: 'xtangerine', zh: '橘子×海蓝', en: 'Tangerine × Sea Blue', seed: '#b02e00', group: 'clash',
-    mood: { zh: '地中海柑橘：橘皮撞一汪海蓝，橄榄叶和黄油般的阳光。', en: 'Mediterranean citrus — peel orange against sea blue, olive leaves, buttery sun.' },
-    spec: { p: { h: 35.8, c: 0.173, cd: 0.12 }, pc: { h: 45, c: 0.07 }, s: { h: 225, c: 0.070 }, t: { h: 125, c: 0.080 }, n: { h: 85, c: 0.014 }, d: { h: 12, c: 0.20 },
-      blobs: [{ h: 85, c: 0.048 }, { h: 225, c: 0.034 }, { h: 125, c: 0.034 }], accent: 'primary', slider: 'secondary', night: 's', state: VIVID } },
-  { id: 'xamber', zh: '琥珀×梅子', en: 'Amber × Plum', seed: '#825500', group: 'clash',
-    mood: { zh: '午后蜂蜜与无花果：琥珀配梅子紫，一片灰青的无花果叶。', en: 'Honey and figs in afternoon light — amber, ripe plum, a grey-teal fig leaf.' },
-    spec: { p: { h: 73.8, c: 0.103, cd: 0.11 }, s: { h: 345, c: 0.070 }, t: { h: 180, c: 0.060 }, n: { h: 85, c: 0.012 }, d: { h: 25, c: 0.19 },
-      blobs: [{ h: 85, c: 0.046 }, { h: 345, c: 0.032 }, { h: 180, c: 0.030 }], accent: 'primary', slider: 'secondary', night: 's', state: WARM } },
-  { id: 'xmatcha', zh: '抹茶×焙茶', en: 'Matcha × Hojicha', seed: '#3c6a00', group: 'clash',
-    mood: { zh: '茶席：抹茶绿配焙茶陶杯的暖褐，窗外一串紫藤。', en: 'Tea ceremony — matcha with a warm hojicha cup and wisteria at the window.' },
-    spec: { p: { h: 132.8, c: 0.133, cd: 0.12 }, s: { h: 50, c: 0.070 }, t: { h: 290, c: 0.065 }, n: { h: 100, c: 0.012 }, d: { h: 27, c: 0.19 },
-      blobs: [{ h: 100, c: 0.042 }, { h: 50, c: 0.032 }, { h: 290, c: 0.034 }], accent: 'primary', slider: 'secondary', night: 't', state: WARM } },
-  { id: 'xteal', zh: '青碧×樱桃', en: 'Teal × Cherry', seed: '#00696b', group: 'clash',
-    mood: { zh: '翡翠泻湖：青碧海水里落一颗樱桃红（只做小点缀），天边长春花蓝与淡紫。', en: 'Jade lagoon — teal water with a single cherry-red accent, periwinkle sky, a lilac horizon.' },
-    spec: { p: { h: 197.1, c: 0.080, cd: 0.09 }, s: { h: 22, c: 0.120 }, t: { h: 272, c: 0.070 }, n: { h: 290, c: 0.010 }, d: { h: 35, c: 0.19 },
-      blobs: [{ h: 290, c: 0.038 }, { h: 197, c: 0.034 }, { h: 15, c: 0.026 }], accent: 'primary', slider: 'secondary', night: 't', state: STD } },
-  { id: 'xindigo', zh: '靛蓝×霓虹粉', en: 'Indigo × Neon Pink', seed: '#3d4fd3', group: 'clash',
-    mood: { zh: '夜墨与霓虹晨光：靛蓝撞霓虹粉，天边一线杏色，雾是丁香紫。', en: 'Night ink meets neon dawn — indigo against neon pink, an apricot horizon, lilac haze.' },
-    spec: { p: { h: 271, c: 0.202, cd: 0.11 }, s: { h: 350, c: 0.095 }, t: { h: 60, c: 0.090 }, n: { h: 290, c: 0.012 }, d: { h: 25, c: 0.19 },
-      blobs: [{ h: 290, c: 0.044 }, { h: 350, c: 0.034 }, { h: 60, c: 0.030 }], accent: 'primary', slider: 'secondary', night: 'p', state: VIVID } },
-  { id: 'xorchid', zh: '兰紫×石板灰', en: 'Orchid × Slate', seed: '#a62092', group: 'clash',
-    mood: { zh: '热带兰花：洋红兰瓣衬一片柔和的石板灰，花心一点金。', en: 'Tropical orchid — magenta petals on soft slate grey, a gold heart.' },
-    spec: { p: { h: 335.3, c: 0.203, cd: 0.12 }, pc: { h: 335, c: 0.075 }, s: { h: 255, c: 0.032 }, t: { h: 85, c: 0.090 }, n: { h: 330, c: 0.011 }, d: { h: 27, c: 0.19 },
-      blobs: [{ h: 330, c: 0.042 }, { h: 255, c: 0.022 }, { h: 85, c: 0.034 }], accent: 'primary', slider: 'secondary', night: 's', state: VIVID } },
-  { id: 'xdustyblue', zh: '雾霾蓝×芥末黄', en: 'Dusty Blue × Mustard', seed: '#78909c', group: 'clash',
-    mood: { zh: '阴天的旧牛仔：雾霾蓝撞一道芥末黄，口袋边一点鼠尾草绿。', en: 'Overcast denim — dusty blue against a mustard stripe, a hint of sage.' },
-    spec: { p: { h: 229.5, c: 0.033, lc: 0.048, cd: 0.055, fit: true }, pc: { h: 229.5, c: 0.032 }, s: { h: 87, c: 0.100 }, t: { h: 150, c: 0.050 }, n: { h: 240, c: 0.009 }, d: { h: 27, c: 0.19 },
-      blobs: [{ h: 240, c: 0.030 }, { h: 87, c: 0.040 }, { h: 150, c: 0.026 }], accent: 'primary', slider: 'secondary', night: 'p', state: STD } },
-  { id: 'xmustard', zh: '芥末黄×雾霾蓝', en: 'Mustard × Dusty Blue', seed: '#d4a72c', group: 'clash',
-    mood: { zh: '复古毛衣：芥末黄撞雾霾蓝，袖口一圈干枯玫瑰。', en: 'Vintage knit — mustard against dusty blue, a dusty-rose cuff.' },
-    spec: { p: { h: 87.1, c: 0.141, lc: 0.110, cd: 0.12, fit: true }, pc: { h: 87, c: 0.070 }, s: { h: 230, c: 0.050 }, t: { h: 18, c: 0.065 }, n: { h: 90, c: 0.013 }, d: { h: 27, c: 0.19 },
-      blobs: [{ h: 90, c: 0.048 }, { h: 230, c: 0.030 }, { h: 18, c: 0.028 }], accent: 'primary', slider: 'secondary', night: 's', state: WARM } },
-  { id: 'xsage', zh: '鼠尾草绿×干枯玫瑰', en: 'Sage × Dusty Rose', seed: '#9caf88', group: 'clash',
-    mood: { zh: '香草小园：鼠尾草绿撞干枯玫瑰，篱笆刷着灰蓝漆。', en: 'Herb garden — sage against dried rose, a fence in dusty-blue paint.' },
-    spec: { p: { h: 128.9, c: 0.059, lc: 0.070, cd: 0.07, fit: true }, pc: { h: 128.9, c: 0.045 }, s: { h: 18, c: 0.065 }, t: { h: 245, c: 0.050 }, n: { h: 110, c: 0.010 }, d: { h: 27, c: 0.19 },
-      blobs: [{ h: 110, c: 0.034 }, { h: 18, c: 0.032 }, { h: 245, c: 0.026 }], accent: 'primary', slider: 'secondary', night: 't', state: STD } },
-  { id: 'xdustyrose', zh: '干枯玫瑰×鼠尾草绿', en: 'Dusty Rose × Sage', seed: '#d8a7a7', group: 'clash',
-    mood: { zh: '夹在书里的花：干枯玫瑰配鼠尾草绿，纸页透出一点淡紫。', en: 'Pressed flowers — dried rose with sage leaves and a faint lilac page.' },
-    spec: { p: { h: 18.5, c: 0.058, lc: 0.085, cd: 0.075, fit: true }, pc: { h: 15, c: 0.045 }, s: { h: 135, c: 0.055 }, t: { h: 310, c: 0.060 }, n: { h: 20, c: 0.011 }, d: { h: 30, c: 0.19 },
-      blobs: [{ h: 20, c: 0.036 }, { h: 135, c: 0.028 }, { h: 310, c: 0.030 }], accent: 'primary', slider: 'secondary', night: 't', state: STD } },
-  { id: 'xgraphite', zh: '石墨×湖蓝', en: 'Graphite × Lake Blue', seed: '#5e5e5e', group: 'clash',
-    mood: { zh: '铅笔与钢：近乎单色的石墨灰，只留默认色的湖蓝做点睛。', en: 'Pencil and steel — near-monochrome graphite with the default lake blue as its one accent.' },
-    spec: { p: { h: 250, c: 0.0, cd: 0.004 }, pc: { h: 250, c: 0.006 }, s: { h: 250, c: 0.012 }, t: { h: 245.4, c: 0.090 }, n: { h: 250, c: 0.004 }, d: { h: 25, c: 0.18 },
-      blobs: [{ h: 250, c: 0.010 }, { h: 245, c: 0.022 }, { h: 250, c: 0.006 }], accent: 'tertiary', slider: 'tertiary', night: 'p', state: MONO } },
+// 设置风格页的分组（顺序 = 网格顺序 = 本数组顺序）：cool 冷调 / nature 自然 / warm 暖调 / floral 花色 / neutral 中性
+const GROUPS = [
+  { id: 'cool', zh: '冷调', en: 'Cool' }, { id: 'nature', zh: '自然', en: 'Nature' }, { id: 'warm', zh: '暖调', en: 'Warm' },
+  { id: 'floral', zh: '花色', en: 'Floral' }, { id: 'neutral', zh: '中性', en: 'Neutral' },
 ];
+// [id, 中文名, English, 分组, 背景色, 6 前景（主交互 / 辅助强调 / 标题图标 / 标签装饰 / 图表装饰 / 低频点缀）]
+const THEMES = [
+  ['dustyblue', '雾霾蓝', 'Dusty Blue', 'cool', '#78909c', ['芥末', '珊瑚', '鼠尾草', '电光蓝', '莓果', '极光青']],
+  ['lake', '湖蓝', 'Lake', 'cool', '#2f5f86', ['珊瑚', '琥珀', '极光青', '兰紫', '蔷薇', '抹茶']],
+  ['glacier', '冰川蓝', 'Glacier', 'cool', '#72c7e8', ['珊瑚', '琥珀', '莓果', '抹茶', '兰紫', '极光青']],
+  ['indigo', '靛蓝', 'Indigo', 'cool', '#3d4fd3', ['霓虹粉', '琥珀', '珊瑚', '极光青', '抹茶', '冰川蓝']],
+  ['teal', '青碧', 'Teal', 'cool', '#00696b', ['樱桃', '琥珀', '兰紫', '莓果', '电光蓝', '鼠尾草']],
+  ['violet', '紫', 'Violet', 'cool', '#6750a4', ['蔷薇', '琥珀', '极光青', '珊瑚', '冰川蓝', '鼠尾草']],
+  ['forest', '山绿', 'Forest', 'nature', '#2f6b4f', ['橘子', '冰川蓝', '兰紫', '琥珀', '莓果', '电光蓝']],
+  ['matcha', '抹茶', 'Matcha', 'nature', '#3c6a00', ['陶土', '莓果', '电光蓝', '极光青', '兰紫', '冰川蓝']],
+  ['sage', '鼠尾草绿', 'Sage', 'nature', '#9caf88', ['干枯玫瑰', '雾霾蓝', '极光青', '兰紫', '香槟金', '莓果']],
+  ['cherry', '樱桃', 'Cherry', 'warm', '#ba1a20', ['抹茶', '冰川蓝', '琥珀', '极光青', '兰紫', '莓果']],
+  ['tangerine', '橘子', 'Tangerine', 'warm', '#b02e00', ['孔雀蓝', '电光蓝', '极光青', '兰紫', '抹茶', '莓果']],
+  ['coral', '珊瑚', 'Coral', 'warm', '#f17f72', ['孔雀蓝', '电光蓝', '琥珀', '兰紫', '抹茶', '石墨']],
+  ['terra', '陶土', 'Terracotta', 'warm', '#8a4b2d', ['鼠尾草', '孔雀蓝', '蔷薇', '兰紫', '电光蓝', '香槟金']],
+  ['amber', '琥珀', 'Amber', 'warm', '#825500', ['莓果', '电光蓝', '极光青', '兰紫', '珊瑚', '冰川蓝']],
+  ['mustard', '芥末黄', 'Mustard', 'warm', '#d4a72c', ['雾霾蓝', '电光蓝', '莓果', '极光青', '干枯玫瑰', '兰紫']],
+  ['champagne', '香槟金', 'Champagne', 'warm', '#c5a66a', ['电光蓝', '莓果', '孔雀蓝', '兰紫', '雾霾蓝', '珊瑚']],
+  ['rose', '蔷薇', 'Rose', 'floral', '#984061', ['杏', '极光青', '冰川蓝', '鼠尾草', '电光蓝', '香槟金']],
+  ['berry', '莓果', 'Berry', 'floral', '#b54a88', ['琥珀', '极光青', '冰川蓝', '抹茶', '珊瑚', '电光蓝']],
+  ['orchid', '兰紫', 'Orchid', 'floral', '#a62092', ['雾霾蓝', '琥珀', '极光青', '冰川蓝', '抹茶', '珊瑚']],
+  ['dustyrose', '干枯玫瑰', 'Dusty Rose', 'floral', '#d8a7a7', ['鼠尾草', '雾霾蓝', '极光青', '香槟金', '兰紫', '冰川蓝']],
+  ['graphite', '石墨', 'Graphite', 'neutral', '#5e5e5e', ['湖蓝', '珊瑚', '琥珀', '极光青', '兰紫', '蔷薇']],
+  ['cream', '奶油白', 'Cream', 'neutral', '#f0e6d5', ['孔雀蓝', '珊瑚', '电光蓝', '莓果', '抹茶', '琥珀']],
+];
+const DEFAULT_ID = 'dustyblue';
+
+/** 背景色 + 6 前景 → 引擎规格（94 个角色照旧由 build() 出）。 @param {{bg:string, fg:string[], group:string}} th */
+function themeSpec(th) {
+  const [f1, f2, f3] = th.fg.map(hexToOklch), B = hexToOklch(th.bg);
+  const cap = (o) => ({ h: o.h, c: Math.min(o.c, 0.17) });
+  // 中性：背景色相 + 小彩度（0.006–0.012）；无彩背景（石墨）用原来的冷灰
+  const n = B.c < 0.01 ? { h: 250, c: 0.004 } : { h: B.h, c: Math.max(0.006, Math.min(0.012, 0.004 + B.c * 0.06)) };
+  const bc = Math.max(B.c, 0.006);
+  return {
+    // 浅色主色 = 前景 1 按对比度压深（fitPrimary，彩度 lc ≈ ink 档）；深色主色 L 0.80、彩度 ≤ 0.13（= fgTones 深色 base）
+    p: { h: f1.h, c: f1.c, lc: Math.min(Math.min(f1.c, 0.17) * 1.05, 0.16), cd: Math.min(f1.c, 0.13), fit: true },
+    pc: { h: f1.h, c: Math.min(Math.min(f1.c, 0.17) * 0.35, 0.05) }, // 选中底 = 前景 1 的 tint 档
+    s: cap(f2), t: cap(f3), n, d: { h: 27, c: 0.19 },
+    blobs: [{ h: B.h, c: Math.min(bc * 0.3, 0.045) }, { h: B.h, c: Math.min(bc * 0.25, 0.04) }, { h: B.h, c: Math.min(bc * 0.2, 0.035) }],
+    accent: 'primary', night: 't',
+    state: th.group === 'neutral' ? MONO : th.group === 'warm' ? WARM : STD,
+  };
+}
+const PRESETS = THEMES.map(([id, zh, en, group, bg, names]) => {
+  const fg = names.map((nm) => FG_POOL[nm]);
+  const th = { bg, fg, group };
+  return { id, zh, en, group, bg, fgNames: names, fg, seed: fg[0],
+    mood: { zh: `背景${zh}；前景 ${names.join(' / ')}`, en: `${en} background with six foreground accents` },
+    spec: themeSpec(th) };
+});
 
 /* ---------- site glue ---------- */
 /** 低饱和种子（spec.p.fit）：浅色主色按色相不变压深，直到在本套最深的正文底（surface-container-high）上 ≥ 4.6:1；
@@ -538,14 +549,35 @@ function fitPrimary(seed, spec) {
 }
 const PRESET_LIST = PRESETS.map((x) => ({ ...x, spec: { ...x.spec, seed: x.seed, seedPrimary: fitPrimary(x.seed, x.spec) } }));
 
-/** 撞色色块（设置风格页 + 快捷面板）上面三条色带：种子本色 + 辅色 / 第三色的本色中间调，亮暗共用（不审计、不压深；
- *  下面几条浅色 / 深色容器带仍取各模式的角色）。gen-palettes 写进 palette-roles.json 的 presets[id].swatch。
- *  @param {string} id @returns {{p:string,s:string,t:string}|null} */
-export function swatchTones(id) {
-  const x = PRESETS.find((p) => p.id === id);
-  if (!x) return null;
-  return { p: x.seed, s: displayTone(x.spec.s), t: displayTone(x.spec.t) };
+/** 图表色 chart-1..6（2026-10-23 PR-G 修订，构建期静态算好）：前景 N 本色在卡片（surface-container-lowest 和
+ *  材质叠在页面底上的合成色）上都 ≥ 3:1 就用本色，否则退到该色的 ink 档（逐色回退：fill → ink）。
+ *  @param {Object<string,any>} r 角色表（就地加 chart-N） @param {Object<string,string>} tones @param {'light'|'dark'} mode */
+const CHART_MIN = 3;
+function addCharts(r, tones) {
+  const card = r['surface-container-lowest'], page = mixHex(r.surface, 0.88, tones['bg-1']);
+  const ok = (c) => contrast(c, card) >= CHART_MIN && contrast(c, page) >= CHART_MIN;
+  const picked = [];
+  for (let i = 1; i <= 6; i++) {
+    const base = tones['fg-' + i], ink = tones['fg-' + i + '-ink'], o = hexToOklch(ink);
+    // 顺序：本色 → ink → ink 同色相再往远离卡片的方向挪一档 / 两档；取第一个既 ≥3:1 又和前面的图表色分得开的
+    // （例：鼠尾草绿里雾霾蓝 / 极光青都退到 ink 后太像；芥末黄深色里雾霾蓝 / 电光蓝本色太像）
+    const dir = hexToOklch(card).l > 0.5 ? -1 : 1;
+    const cands = [...(ok(base) ? [base] : []), ink, oklch(o.l + dir * 0.07, o.c, o.h), oklch(o.l + dir * 0.14, o.c, o.h)];
+    const c = cands.find((x) => ok(x) && picked.every((y) => chartDistinct(x, y))) || cands[0];
+    picked.push(c); r['chart-' + i] = c;
+  }
+  return r;
 }
+/** 图表两色分得开：都有彩色（C > 0.05）且色相差 ≥ 22°，或 OKLab ΔE ≥ 0.08 */
+function chartDistinct(a, b) {
+  const A = hexToOklch(a), B = hexToOklch(b);
+  if (A.c > 0.05 && B.c > 0.05 && hueDist(A.h, B.h) >= 22) return true;
+  const lab = (o) => [o.l, o.c * Math.cos(o.h * Math.PI / 180), o.c * Math.sin(o.h * Math.PI / 180)];
+  const x = lab(A), y = lab(B);
+  return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]) >= 0.08;
+}
+/** 不透明色按比例混合（= CSS color-mix(in srgb, a p, b)） */
+function mixHex(a, p, b) { const A = hexRgb(a), B = hexRgb(b); return rgbHex(A.map((v, i) => v * p + B[i] * (1 - p))); }
 
 /** 与 gen.js 相同的壁纸串（--sgx-background-css） */
 function wallpaperCss(r) {
@@ -566,18 +598,39 @@ function buildMode(spec, mode) {
   return { ...r };
 }
 
-/** @param {string} seed #rrggbb @returns {{light:Object<string,any>, dark:Object<string,any>, lightState:any, darkState:any, derivedFrom:string, seedPrimary:string}} */
-export function rolesFor(seed) {
-  const spec = deriveSpec(seed, PRESET_LIST.filter((x) => x.group === 'mono'));
-  return { light: buildMode(spec, "light"), dark: buildMode(spec, "dark"),
-    lightState: spec.state.light, darkState: spec.state.dark, derivedFrom: spec.derivedFrom, seedPrimary: spec.seedPrimary };
+/** 自定义种子的色调 token：最近预设的背景色 + 6 前景整体转到种子色相（和 deriveSpec 转 s / t / n 同一个角度），前景 1 = 种子本身。
+ *  @param {string} seed @param {any} spec deriveSpec 的结果 @returns {{bg:string, fg:string[]}} */
+function customTheme(seed, spec) {
+  const ref = PRESET_LIST.find((x) => x.id === spec.derivedFrom);
+  const s = hexToOklch(seed), q = hexToOklch(ref.seed);
+  const shift = s.c < 0.03 || q.c < 0.03 ? 0 : s.h - q.h;
+  const rot = (hex) => { if (!shift) return hex; const o = hexToOklch(hex); return o.c < 0.01 ? hex : oklch(o.l, o.c, wrap(o.h + shift)); };
+  return { bg: rot(ref.bg), fg: [seed, ...ref.fg.slice(1).map(rot)] };
 }
 
-/** 预设 id → 角色表（单测用来和 JSON 对照） */
+/** @param {string} seed #rrggbb @returns {{light:Object<string,any>, dark:Object<string,any>, lightState:any, darkState:any, lightTones:Object<string,string>, darkTones:Object<string,string>, derivedFrom:string, seedPrimary:string}} */
+export function rolesFor(seed) {
+  const spec = deriveSpec(seed, PRESET_LIST);
+  const th = customTheme(seed, spec);
+  const lightTones = tonesFor(th, "light"), darkTones = tonesFor(th, "dark");
+  return { light: addCharts(buildMode(spec, "light"), lightTones), dark: addCharts(buildMode(spec, "dark"), darkTones),
+    lightState: spec.state.light, darkState: spec.state.dark,
+    lightTones, darkTones,
+    derivedFrom: spec.derivedFrom, seedPrimary: spec.seedPrimary };
+}
+
+/** 预设 id → 角色表 + 色调 token（单测用来和 JSON 对照） */
 export function presetRoles(id) {
   const p = PRESET_LIST.find((x) => x.id === id);
   if (!p) return null;
-  return { light: buildMode(p.spec, "light"), dark: buildMode(p.spec, "dark"), lightState: p.spec.state.light, darkState: p.spec.state.dark };
+  const lightTones = tonesFor(p, "light"), darkTones = tonesFor(p, "dark");
+  return { light: addCharts(buildMode(p.spec, "light"), lightTones), dark: addCharts(buildMode(p.spec, "dark"), darkTones),
+    lightState: p.spec.state.light, darkState: p.spec.state.dark, lightTones, darkTones };
+}
+
+/** 色调 token → CSS 声明（--sgx-bg-1..7、--sgx-fg-1..6、--sgx-fg-N-tint / -ink） @param {Object<string,string>} tones @returns {string[]} */
+export function toneDecls(tones) {
+  return Object.entries(tones || {}).map(([k, v]) => `--sgx-${k}: ${v};`);
 }
 
 /**
@@ -605,9 +658,9 @@ export function roleDecls(roles, state) {
  */
 export function rolesCss(seed) {
   const r = rolesFor(seed);
-  return `html:root{--sgx-seed: ${seed};${roleDecls(r.light, r.lightState).join("")}}` +
-    `html:root.dark{${roleDecls(r.dark, r.darkState).join("")}}`;
+  return `html:root{--sgx-seed: ${seed};${roleDecls(r.light, r.lightState).join("")}${toneDecls(r.lightTones).join("")}}` +
+    `html:root.dark{${roleDecls(r.dark, r.darkState).join("")}${toneDecls(r.darkTones).join("")}}`;
 }
 
-export { PRESETS, deriveSpec, build, audit, contrast, hexToOklch };
+export { mixHex, PRESETS, GROUPS, DEFAULT_ID, FG_POOL, FG_ROLES, deriveSpec, build, audit, contrast, hexToOklch };
 /* @sgx-shell:end */
