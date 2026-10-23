@@ -43,10 +43,10 @@ export async function onRequestGet(context) {
   const { request, env } = context;
   const role = await verifySession(request, env);
   if (!role) return err('unauthorized', 401);
-  await ensureSchema(env.DB);
+  await ensureSchema(env.D1_QUOTES);
   const owner = role === 'owner';
-  const { results } = await env.DB.prepare(`SELECT ${COLS} FROM collections ORDER BY sort, created_at, id`).all();
-  const by = await members(env.DB, !owner);
+  const { results } = await env.D1_QUOTES.prepare(`SELECT ${COLS} FROM collections ORDER BY sort, created_at, id`).all();
+  const by = await members(env.D1_QUOTES, !owner);
   let list = (results || []).map((r) => rowToCollection(r, by[r.id] || []));
   if (!owner) list = list.filter((c) => c.quote_ids.length > 0);
   return json({ ok: true, owner, collections: list });
@@ -60,13 +60,13 @@ export async function onRequestPost(context) {
   if (r.response) return r.response;
   const p = parseCollection(r.body, false);
   if ('error' in p) return err(p.error, 400);
-  await ensureSchema(env.DB);
-  const n = await env.DB.prepare('SELECT COUNT(*) AS n, COALESCE(MAX(sort), -1) AS s FROM collections').first();
+  await ensureSchema(env.D1_QUOTES);
+  const n = await env.D1_QUOTES.prepare('SELECT COUNT(*) AS n, COALESCE(MAX(sort), -1) AS s FROM collections').first();
   if (n && n.n >= LIMITS.collections) return err('limit', 409);
   const id = newId();
-  await env.DB.prepare('INSERT INTO collections (id, name, intro, created_at, sort) VALUES (?1, ?2, ?3, ?4, ?5)')
+  await env.D1_QUOTES.prepare('INSERT INTO collections (id, name, intro, created_at, sort) VALUES (?1, ?2, ?3, ?4, ?5)')
     .bind(id, p.fields.name, p.fields.intro, Date.now(), (n ? Number(n.s) : -1) + 1).run();
-  return json({ ok: true, collection: await one(env.DB, id) }, 201);
+  return json({ ok: true, collection: await one(env.D1_QUOTES, id) }, 201);
 }
 
 export async function onRequestPut(context) {
@@ -79,25 +79,25 @@ export async function onRequestPut(context) {
   if (r.response) return r.response;
   const p = parseCollection(r.body, true);
   if ('error' in p) return err(p.error, 400);
-  await ensureSchema(env.DB);
-  const exists = await env.DB.prepare('SELECT id FROM collections WHERE id = ?1').bind(id).first();
+  await ensureSchema(env.D1_QUOTES);
+  const exists = await env.D1_QUOTES.prepare('SELECT id FROM collections WHERE id = ?1').bind(id).first();
   if (!exists) return err('not-found', 404);
   const entries = Object.entries(p.fields);
   if (entries.length) {
     const args = entries.map(([, v]) => v);
     const sets = entries.map(([k], i) => k + ' = ?' + (i + 1));
     args.push(id);
-    await env.DB.prepare('UPDATE collections SET ' + sets.join(', ') + ' WHERE id = ?' + args.length).bind(...args).run();
+    await env.D1_QUOTES.prepare('UPDATE collections SET ' + sets.join(', ') + ' WHERE id = ?' + args.length).bind(...args).run();
   }
   if (p.quote_ids) {
-    const { results } = await env.DB.prepare('SELECT id FROM quotes').all();
+    const { results } = await env.D1_QUOTES.prepare('SELECT id FROM quotes').all();
     const exist = new Set((results || []).map((x) => x.id));
     const ids = p.quote_ids.filter((q) => exist.has(q));
-    const stmts = [env.DB.prepare('DELETE FROM collection_quotes WHERE collection_id = ?1').bind(id)];
-    ids.forEach((q, i) => stmts.push(env.DB.prepare('INSERT INTO collection_quotes (collection_id, quote_id, position) VALUES (?1, ?2, ?3)').bind(id, q, i)));
-    await env.DB.batch(stmts);
+    const stmts = [env.D1_QUOTES.prepare('DELETE FROM collection_quotes WHERE collection_id = ?1').bind(id)];
+    ids.forEach((q, i) => stmts.push(env.D1_QUOTES.prepare('INSERT INTO collection_quotes (collection_id, quote_id, position) VALUES (?1, ?2, ?3)').bind(id, q, i)));
+    await env.D1_QUOTES.batch(stmts);
   }
-  return json({ ok: true, collection: await one(env.DB, id) });
+  return json({ ok: true, collection: await one(env.D1_QUOTES, id) });
 }
 
 export async function onRequestDelete(context) {
@@ -106,10 +106,10 @@ export async function onRequestDelete(context) {
   const { request, env } = context;
   const id = idParam(request);
   if (!id) return err('bad-id', 400);
-  await ensureSchema(env.DB);
-  const res = await env.DB.prepare('DELETE FROM collections WHERE id = ?1').bind(id).run();
+  await ensureSchema(env.D1_QUOTES);
+  const res = await env.D1_QUOTES.prepare('DELETE FROM collections WHERE id = ?1').bind(id).run();
   if (!res.meta || !res.meta.changes) return err('not-found', 404);
-  await env.DB.prepare('DELETE FROM collection_quotes WHERE collection_id = ?1').bind(id).run();
+  await env.D1_QUOTES.prepare('DELETE FROM collection_quotes WHERE collection_id = ?1').bind(id).run();
   return json({ ok: true });
 }
 

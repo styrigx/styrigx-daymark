@@ -1,7 +1,7 @@
 /**
  * @fileoverview styrigx-daymark-core：日刻接口 Worker（路由 daymark.styrigx.com/api/*，见 wrangler.toml）。
  *
- * 数据接口都在这里，D1（DB）只绑在本 Worker 上；Pages 只放静态文件。
+ * 数据接口都在这里，D1（D1_QUOTES）只绑在本 Worker 上；Pages 只放静态文件。
  * 本 Worker 不持任何钥匙：会话交给主站鉴权网关验（服务绑定 AUTH，见 src/api/_auth.js）。
  *
  * 请求顺序：

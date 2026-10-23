@@ -25,8 +25,8 @@ export async function onRequest(context) {
   if (request.method !== 'GET' && request.method !== 'HEAD') return methodNotAllowed('GET, OPTIONS');
   const q = new URL(request.url).searchParams.get('d') || '';
   const day = DAY_RE.test(q) ? q : dayInShanghai();
-  await ensureSchema(env.DB);
-  const { results } = await env.DB.prepare(
+  await ensureSchema(env.D1_QUOTES);
+  const { results } = await env.D1_QUOTES.prepare(
     "SELECT id, text, trans, author, source, source_type, tags, visibility, created_at, updated_at FROM quotes WHERE visibility = 'public' ORDER BY id"
   ).all();
   const hit = pickForDay(results || [], day);

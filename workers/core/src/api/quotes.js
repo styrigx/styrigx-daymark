@@ -53,15 +53,15 @@ export async function onRequestGet(context) {
   const { request, env } = context;
   const role = await verifySession(request, env);
   if (!role) return err('unauthorized', 401);
-  await ensureSchema(env.DB);
+  await ensureSchema(env.D1_QUOTES);
   const owner = role === 'owner';
   const sql = owner
     ? `SELECT ${QUOTE_COLS} FROM quotes ORDER BY created_at DESC, id`
     : `SELECT ${QUOTE_COLS} FROM quotes WHERE visibility = 'public' ORDER BY created_at DESC, id`;
-  const { results } = await env.DB.prepare(sql).all();
+  const { results } = await env.D1_QUOTES.prepare(sql).all();
   const quotes = (results || []).map((r) => rowToQuote(r, owner));
   if (owner) {
-    const m = await env.DB.prepare(
+    const m = await env.D1_QUOTES.prepare(
       'SELECT cq.quote_id AS q, cq.collection_id AS c FROM collection_quotes cq JOIN collections c ON c.id = cq.collection_id ORDER BY c.sort, c.created_at, c.id'
     ).all();
     /** @type {Record<string, string[]>} */
@@ -80,17 +80,17 @@ export async function onRequestPost(context) {
   if (r.response) return r.response;
   const p = parseQuote(r.body, false);
   if ('error' in p) return err(p.error, 400);
-  await ensureSchema(env.DB);
-  const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM quotes').first();
+  await ensureSchema(env.D1_QUOTES);
+  const n = await env.D1_QUOTES.prepare('SELECT COUNT(*) AS n FROM quotes').first();
   if (n && n.n >= LIMITS.total) return err('limit', 409);
   const f = p.fields;
   const now = Date.now();
   const id = newId();
-  await env.DB.prepare(
+  await env.D1_QUOTES.prepare(
     'INSERT INTO quotes (id, text, trans, author, source, source_type, tags, visibility, note, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?10)'
   ).bind(id, f.text, f.trans, f.author, f.source, f.source_type, JSON.stringify(f.tags), f.visibility, f.note, now).run();
-  if (p.collections && p.collections.length) await setCollections(env.DB, id, p.collections);
-  return json({ ok: true, quote: await ownerQuote(env.DB, id) }, 201);
+  if (p.collections && p.collections.length) await setCollections(env.D1_QUOTES, id, p.collections);
+  return json({ ok: true, quote: await ownerQuote(env.D1_QUOTES, id) }, 201);
 }
 
 export async function onRequestPut(context) {
@@ -103,7 +103,7 @@ export async function onRequestPut(context) {
   if (r.response) return r.response;
   const p = parseQuote(r.body, true);
   if ('error' in p) return err(p.error, 400);
-  await ensureSchema(env.DB);
+  await ensureSchema(env.D1_QUOTES);
   const sets = [];
   const args = [];
   for (const [k, v] of Object.entries(p.fields)) {
@@ -113,10 +113,10 @@ export async function onRequestPut(context) {
   args.push(Date.now());
   sets.push('updated_at = ?' + args.length);
   args.push(id);
-  const res = await env.DB.prepare('UPDATE quotes SET ' + sets.join(', ') + ' WHERE id = ?' + args.length).bind(...args).run();
+  const res = await env.D1_QUOTES.prepare('UPDATE quotes SET ' + sets.join(', ') + ' WHERE id = ?' + args.length).bind(...args).run();
   if (!res.meta || !res.meta.changes) return err('not-found', 404);
-  if (p.collections) await setCollections(env.DB, id, p.collections);
-  return json({ ok: true, quote: await ownerQuote(env.DB, id) });
+  if (p.collections) await setCollections(env.D1_QUOTES, id, p.collections);
+  return json({ ok: true, quote: await ownerQuote(env.D1_QUOTES, id) });
 }
 
 export async function onRequestDelete(context) {
@@ -125,10 +125,10 @@ export async function onRequestDelete(context) {
   const { request, env } = context;
   const id = idParam(request);
   if (!id) return err('bad-id', 400);
-  await ensureSchema(env.DB);
-  const res = await env.DB.prepare('DELETE FROM quotes WHERE id = ?1').bind(id).run();
+  await ensureSchema(env.D1_QUOTES);
+  const res = await env.D1_QUOTES.prepare('DELETE FROM quotes WHERE id = ?1').bind(id).run();
   if (!res.meta || !res.meta.changes) return err('not-found', 404);
-  await env.DB.prepare('DELETE FROM collection_quotes WHERE quote_id = ?1').bind(id).run();
+  await env.D1_QUOTES.prepare('DELETE FROM collection_quotes WHERE quote_id = ?1').bind(id).run();
   return json({ ok: true });
 }
 

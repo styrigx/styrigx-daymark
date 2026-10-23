@@ -3,7 +3,7 @@
 // - 私密句子 private:true；随手一笔只进私密句子的 text，公开句子的索引里搜不到
 // - 写接口成功后 waitUntil 重建并 put site:daymark；读接口、失败的写不触发
 // - Cron scheduled 重建；KV / D1 出错只打日志，接口照常返回
-// - wrangler.toml：SEARCH_KV 绑定 + 每小时 Cron
+// - wrangler.toml：KV_SEARCH_INDEX 绑定 + 每小时 Cron
 // SQL 用 node:sqlite 真跑（CI 用 Node 22）。
 // 运行：node --test tests/workers/search-index.test.mjs
 import { test } from 'node:test';
@@ -50,8 +50,8 @@ async function call(p, { role = 'owner', db, kv = makeKV(), ctx = makeCtx(), met
   const headers = { Cookie: 'x', Origin: ORIGIN };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   const req = new Request(ORIGIN + p, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
-  const env = { AUTH: auth(role), DB: db };
-  if (kv) env.SEARCH_KV = kv;
+  const env = { AUTH: auth(role), D1_QUOTES: db };
+  if (kv) env.KV_SEARCH_INDEX = kv;
   const res = await worker.fetch(req, env, ctx);
   await ctx.flush();
   return res;
@@ -156,7 +156,7 @@ test('重建在 waitUntil 里：响应不等它', async () => {
   const db = makeD1();
   const ctx = makeCtx();
   const kv = makeKV();
-  const env = { AUTH: auth('owner'), DB: db, SEARCH_KV: kv };
+  const env = { AUTH: auth('owner'), D1_QUOTES: db, KV_SEARCH_INDEX: kv };
   const req = new Request(ORIGIN + '/api/quotes', { method: 'POST', headers: { Cookie: 'x', Origin: ORIGIN, 'Content-Type': 'application/json' }, body: JSON.stringify({ text: 'x' }) });
   const res = await worker.fetch(req, env, ctx);
   assert.equal(res.status, 201);
@@ -170,7 +170,7 @@ test('Cron scheduled：重建并写入', async () => {
   await call('/api/quotes', { db, method: 'POST', body: { text: '兜底' } });
   const kv = makeKV();
   const ctx = makeCtx();
-  await worker.scheduled({ cron: '17 * * * *', scheduledTime: Date.now() }, { DB: db, SEARCH_KV: kv }, ctx);
+  await worker.scheduled({ cron: '17 * * * *', scheduledTime: Date.now() }, { D1_QUOTES: db, KV_SEARCH_INDEX: kv }, ctx);
   await ctx.flush();
   assert.equal(kv.puts.length, 1);
   assert.equal(kv.last().key, 'site:daymark');
@@ -185,18 +185,18 @@ test('出错不影响接口：KV 抛错、没绑 KV、D1 读失败都只打日�
   assert.ok(logs.some((l) => l.includes('[daymark-search] rebuild failed')));
   logs = await quiet(async () => { r = await call('/api/quotes', { db, kv: null, method: 'POST', body: { text: 'b' } }); });
   assert.equal(r.status, 201);
-  assert.ok(logs.some((l) => l.includes('SEARCH_KV binding missing')));
+  assert.ok(logs.some((l) => l.includes('KV_SEARCH_INDEX binding missing')));
   const badDb = { prepare() { throw new Error('d1 down'); }, batch: async () => { throw new Error('d1 down'); } };
   let out;
-  await quiet(async () => { out = await S.rebuildSearchIndex({ DB: badDb, SEARCH_KV: makeKV() }); });
+  await quiet(async () => { out = await S.rebuildSearchIndex({ D1_QUOTES: badDb, KV_SEARCH_INDEX: makeKV() }); });
   assert.deepEqual(out, { ok: false, error: 'rebuild-failed' });
   /* scheduled 同样不抛 */
-  logs = await quiet(async () => { await worker.scheduled({}, { DB: badDb, SEARCH_KV: makeKV() }, makeCtx()); });
+  logs = await quiet(async () => { await worker.scheduled({}, { D1_QUOTES: badDb, KV_SEARCH_INDEX: makeKV() }, makeCtx()); });
   assert.ok(logs.some((l) => l.includes('[daymark-search] rebuild failed')));
 });
 
-test('wrangler.toml：SEARCH_KV 绑 styrigx-search-index，每小时 Cron', () => {
+test('wrangler.toml：KV_SEARCH_INDEX 绑 styrigx-search-index，每小时 Cron', () => {
   const t = readFileSync(W + '/wrangler.toml', 'utf8');
-  assert.match(t, /\[\[kv_namespaces\]\]\nbinding = "SEARCH_KV"\nid = "bd1babcc3fe74d58994e254c74d34ced"/);
+  assert.match(t, /\[\[kv_namespaces\]\]\nbinding = "KV_SEARCH_INDEX"\nid = "bd1babcc3fe74d58994e254c74d34ced"/);
   assert.match(t, /\[triggers\]\ncrons = \["17 \* \* \* \*"\]/);
 });
