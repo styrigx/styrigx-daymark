@@ -66,10 +66,11 @@ test('访客：顶栏三页签、没有搜索栏和快捷面板（搜索层平�
   await expect(page.locator('#dm-echo-day')).toHaveText('10月20日 星期二');
   await expect(page.locator('#dm-echo-body')).toContainText('鲁迅 · 《故乡》');
   await expect(page.locator('#dm-share')).toBeVisible();
-  /* 右圆 = 留言板（本站 /guestbook/）；没有顶栏头像、没有版权页脚 */
+  /* 右胶囊 = 分享 + 留言板（本站 /guestbook/）；没有顶栏头像、没有版权页脚 */
   await expect(page.locator('.sgx-topbar > *')).toHaveCount(3);
-  await expect(page.locator('.sgx-topbar .sgx-tb-end')).toHaveAttribute('href', '/guestbook/');
-  await expect(page.locator('.sgx-topbar .sgx-tb-end')).toHaveAttribute('aria-label', '留言板');
+  await expect(page.locator('.sgx-topbar > .sgx-tb-end-group > [data-sgx-share]')).toHaveAttribute('aria-label', '分享');
+  await expect(page.locator('.sgx-topbar .sgx-tb-guestbook')).toHaveAttribute('href', '/guestbook/');
+  await expect(page.locator('.sgx-topbar .sgx-tb-guestbook')).toHaveAttribute('aria-label', '留言板');
   await expect(page.locator('.sgx-tb-me, footer')).toHaveCount(0);
   await expect(page.getByText('Powered by')).toHaveCount(0);
   await page.locator('.sgx-tb-nav').click();
@@ -422,16 +423,16 @@ test('主题跟主站 sgx-ui cookie：pal 换预设；accent 是自定义种子 
   expect(await ind()).toBe(custom);
 });
 
-test('留言板：右圆进 /guestbook/，长条只有页名，卡片里插入共用 Giscus（specific term=guestbook、输入框在上、跟浅色）；英文页 lang=en', async ({ page }) => {
+test('留言板：右胶囊的留言板进 /guestbook/，长条只有页名，卡片里插入共用 Giscus（specific term=guestbook、输入框在上、跟浅色）；英文页 lang=en', async ({ page }) => {
   await mock(page, false);
   const giscus = [];
   await page.route('https://giscus.app/**', (r) => { giscus.push(r.request().url()); return r.fulfill({ status: 200, contentType: 'text/javascript', body: '' }); });
   await page.goto('/');
-  await page.locator('.sgx-topbar .sgx-tb-end').click();
+  await page.locator('.sgx-topbar .sgx-tb-guestbook').click();
   await expect(page).toHaveURL(/\/guestbook\/$/);
   await expect(page.locator('.sgx-tb-pill .sgx-tb-title')).toHaveText('留言板');
   await expect(page.locator('.sgx-tb-pill .sgx-seg')).toHaveCount(0);
-  await expect(page.locator('.sgx-topbar .sgx-tb-end')).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('.sgx-topbar .sgx-tb-guestbook')).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('.dm-gb-card')).toBeVisible();
   const s = page.locator('[data-giscus] script[src="https://giscus.app/client.js"]');
   await expect(s).toHaveCount(1);
@@ -449,6 +450,6 @@ test('留言板：右圆进 /guestbook/，长条只有页名，卡片里插入�
   await page.goto('/en/guestbook/');
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.locator('.sgx-tb-pill .sgx-tb-title')).toHaveText('Guestbook');
-  await expect(page.locator('.sgx-topbar .sgx-tb-end')).toHaveAttribute('href', '/en/guestbook/');
+  await expect(page.locator('.sgx-topbar .sgx-tb-guestbook')).toHaveAttribute('href', '/en/guestbook/');
   await expect(page.locator('[data-giscus] script')).toHaveAttribute('data-lang', 'en');
 });

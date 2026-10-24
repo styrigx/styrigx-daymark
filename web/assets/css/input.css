@@ -15,7 +15,7 @@ html, body {
 @supports (overflow-x: clip) {
   html, body { overflow-x: clip; }
 }
-/* @sgx-shell:begin styrigx/styrigx-space@main web/shared/shell v5cb1baa5ea73（scripts/sync-shell.mjs 写入，勿手改） */
+/* @sgx-shell:begin styrigx/styrigx-space@main web/shared/shell v1fba3fc24d1f（scripts/sync-shell.mjs 写入，勿手改） */
 /* ---- tokens.css ---- */
 /* 由 styrigx-space scripts/gen-shell.mjs 从 web/data/palette-roles.json 生成，勿手改；子站用 scripts/sync-shell.mjs 同步。 */
 /* 22 套七色调色板（1 背景色 + 6 前景撞色）：<html data-palette="<id>">（默认 dustyblue 不写），深色 <html class="dark">；自定义种子在运行时用 palette-scheme.js 的 rolesCss() 覆盖。 */
@@ -6726,6 +6726,46 @@ html, body {
 @media (prefers-reduced-motion: reduce) { .sgx-tb-nav, .sgx-tb-end { transition: none; } }
 .sgx-tb-nav:focus-visible, .sgx-tb-end:focus-visible {
   outline: 2px solid var(--sgx-focus-ring); outline-offset: 2px; }
+/* 右边胶囊（2026-10-24，子站）：一个胶囊装两个图标 [分享][本站按钮（留言板）]，材质 / 高度 / 圆角和两侧圆一样，
+   宽 = 2 × --sgx-tb-gbtn + 2 × 内边距 + 边线 = 86px（比原来的右圆宽 34px；360 宽手机上长条还放得下三格英文页签）。主站不用。按钮本身透明，悬停 / 按下 / 焦点框各管各的半边。
+   分享按钮生成短链时 aria-busy + .is-busy：图标呼吸，点了不理（share.js）。 */
+:root { --sgx-tb-gbtn: 40px; --sgx-tb-gpad: 2px; }
+.sgx-tb-end-group { display: inline-flex; align-items: center; flex-shrink: 0; height: var(--sgx-tb-btn); padding: 0 var(--sgx-tb-gpad);
+  border-radius: 999px; box-sizing: border-box; background: var(--sgx-mat); -webkit-backdrop-filter: var(--sgx-mat-filter);
+  border: 1px solid var(--sgx-mat-line); box-shadow: var(--sgx-mat-shadow); pointer-events: auto; }
+@supports (backdrop-filter: blur(1px)) {
+  .sgx-tb-end-group { backdrop-filter: var(--sgx-mat-filter); }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .sgx-tb-end-group { background: var(--sgx-mat-solid); }
+}
+.sgx-tb-gbtn { width: var(--sgx-tb-gbtn); height: calc(var(--sgx-tb-btn) - 2 * var(--sgx-tb-gpad) - 2px); flex-shrink: 0; padding: 0; margin: 0; border: 0;
+  border-radius: 999px; box-sizing: border-box; background: transparent; display: inline-flex; align-items: center; justify-content: center;
+  color: var(--sgx-text-primary); cursor: pointer; text-decoration: none; -webkit-tap-highlight-color: transparent; transition: background-color .15s ease; }
+.sgx-tb-gbtn svg { width: 22px; height: 22px; }
+@media (hover: hover) and (pointer: fine) {
+  .sgx-tb-gbtn:hover { background-image: linear-gradient(var(--sgx-state-hover-bg), var(--sgx-state-hover-bg)); }
+}
+.sgx-tb-gbtn:active { background-image: linear-gradient(var(--sgx-state-pressed-bg), var(--sgx-state-pressed-bg)); }
+.sgx-tb-gbtn:focus-visible { outline: 2px solid var(--sgx-focus-ring); outline-offset: -2px; }
+.sgx-tb-gbtn.is-busy { cursor: progress; }
+.sgx-tb-gbtn.is-busy svg { animation: sgx-share-busy .9s ease-in-out infinite alternate; }
+@keyframes sgx-share-busy { from { opacity: 1; } to { opacity: .3; } }
+.reduced-motion .sgx-tb-gbtn { transition: none; }
+.reduced-motion .sgx-tb-gbtn.is-busy svg { animation: none; opacity: .4; }
+@media (prefers-reduced-motion: reduce) {
+  .sgx-tb-gbtn { transition: none; }
+  .sgx-tb-gbtn.is-busy svg { animation: none; opacity: .4; }
+}
+/* 分享按钮的 toast（share.js 自己建）：样式同主站 .sgx-toast（小胶囊、底部居中、2.4 秒），颜色用反色表面角色 */
+.sgx-share-toast { position: fixed; left: 50%; bottom: calc(120px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 16px); z-index: 200;
+  max-width: min(92vw, 28rem); padding: 10px 20px; border-radius: 999px; box-sizing: border-box;
+  background: var(--sgx-inverse-surface); color: var(--sgx-inverse-on-surface);
+  font-family: Inter, "Inter Fallback", ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 1.4; text-align: center;
+  box-shadow: 0 8px 24px rgba(0,0,0,.25); opacity: 0; pointer-events: none; transition: opacity .25s ease, transform .25s ease; }
+.sgx-share-toast.show { opacity: 1; transform: translate(-50%, 0); }
+.reduced-motion .sgx-share-toast { transition: none; }
+@media (prefers-reduced-motion: reduce) { .sgx-share-toast { transition: none; } }
 /* ---- drawer ---- */
 /* 导航抽屉（2026-10-20，Gmail Android 式左侧抽屉；主站 baseof.html #sgx-drawer，head-buttons.js 开关；子站同一份）：
    <dialog> 模态铺满视口，::backdrop 是遮罩（--sgx-scrim）；.sgx-drawer-sheet 从左滑入（is-open）。
@@ -7025,6 +7065,12 @@ h1, h2, h3 { letter-spacing: -0.02em; }
 }
 .sgx-seg-btn:not([aria-selected="true"]):active { background-image: linear-gradient(var(--sgx-state-pressed-bg), var(--sgx-state-pressed-bg)); }
 .sgx-seg-btn:focus-visible { outline: 2px solid var(--sgx-focus-ring); outline-offset: -2px; }
+/* 窄手机（< 380px，如 360 宽）：右边换成分享 + 留言板胶囊（共享外壳 .sgx-tb-end-group，86px）后长条窄了 34px，
+   英文「Flavors」放不下；只把格子间距 4 → 2px、左右内边距 6 → 0（字号、高度、指示器、三格等宽都不变），中文本来就放得下 */
+@media (max-width: 379.98px) {
+  .sgx-seg { --seg-gap: 2px; }
+  .sgx-seg-btn { padding: 0; }
+}
 /* 宽屏（≥ 600px）长条按内容定宽（同主站）：三个标签最小 88px、左右 16px，三栏等宽（指示器按等宽平移） */
 @media (min-width: 600px) {
   .sgx-seg { flex: 0 0 auto; max-width: none; grid-template-columns: repeat(3, 1fr); }
