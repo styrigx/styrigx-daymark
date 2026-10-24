@@ -13,15 +13,17 @@ const base = read('web/layouts/_default/baseof.html');
 const index = read('web/layouts/index.html');
 const css = read('web/assets/css/input.css');
 
-test('顶栏：九宫格 · 长条（首页 = 分段滑块 余响 · 拾录 · 百味，英文 Echo / Trove / Flavors；其他页只有页名）· 右圆留言板', () => {
+test('顶栏：九宫格 · 长条（首页 = 分段滑块 余响 · 拾录 · 百味，英文 Echo / Trove / Flavors；其他页只有页名）· 右胶囊（分享 + 留言板）', () => {
   const zh = [...base.matchAll(/"zh" "([^"]+)" "en" "([^"]+)" "hash"/g)].map((m) => [m[1], m[2]]);
   assert.deepEqual(zh, [['余响', 'Echo'], ['拾录', 'Trove'], ['百味', 'Flavors']]);
   assert.match(base, /class="sgx-tb-nav"/);
   assert.match(base, /role="tablist"[^>]*data-dm-seg/);
   assert.match(base, /\{\{ else \}\}\s*<span class="sgx-tb-title">\{\{ \$pageName \}\}<\/span>/);
-  /* 右圆 = 留言板（三个子站同一个 pen-line 图标），链本站 /guestbook/、英文 /en/guestbook/ */
+  /* 留言板（三个子站同一个 pen-line 图标），链本站 /guestbook/、英文 /en/guestbook/ */
   assert.match(base, /\$gb := cond \$isEn "\/en\/guestbook\/" "\/guestbook\/"/);
-  assert.match(base, /<a class="sgx-tb-end sgx-tb-guestbook" href="\{\{ \$gb \}\}"[^>]*>\{\{ partial "icon\.html" "pen-line" \}\}<\/a>/);
+  /* 2026-10-24：右胶囊 = 分享（共享外壳 share.js，图标 nav.json share）+ 留言板 */
+  assert.match(base, /<div class="sgx-tb-end-group">\s*<button type="button" class="sgx-tb-gbtn sgx-tb-share" data-sgx-share [^>]*>\{\{ index \(resources\.Get "sgx-shell\/nav\.json" \| transform\.Unmarshal\)\.icons "share" \| safeHTML \}\}<\/button>\s*<a class="sgx-tb-gbtn sgx-tb-guestbook" href="\{\{ \$gb \}\}"[^>]*>\{\{ partial "icon\.html" "pen-line" \}\}<\/a>\s*<\/div>/);
+  assert.match(base, /resources\.Get "js\/sgx\/share-host\.js" \| js\.Build/);
   assert.doesNotMatch(base, /sgx-tb-me|sgx-tb-avatar|sgx-seg--none/);
 });
 
