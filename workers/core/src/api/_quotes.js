@@ -1,5 +1,5 @@
 // workers/core/src/api/_quotes.js
-// 句子：表结构、校验、行映射、今日一句的挑选。下划线开头：不是接口。
+// 句子：表结构、校验、行映射、今日一句的挑选（锁定 / 改写见 _today.js）。下划线开头：不是接口。
 
 // 兜底建表只管全新的库（测试、本地）。已有的库靠 migrations/ 加列：CI 先跑 D1 迁移再部署 core，
 // 这里不做 ALTER TABLE（代码先加了列，迁移 0002 就会因列已存在而失败、卡住部署）。
@@ -9,6 +9,7 @@ export const SCHEMA = [
   "CREATE TABLE IF NOT EXISTS collections (id TEXT PRIMARY KEY, name TEXT NOT NULL, intro TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL DEFAULT 0, sort INTEGER NOT NULL DEFAULT 0)",
   'CREATE TABLE IF NOT EXISTS collection_quotes (collection_id TEXT NOT NULL, quote_id TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (collection_id, quote_id))',
   'CREATE INDEX IF NOT EXISTS collection_quotes_quote ON collection_quotes (quote_id)',
+  "CREATE TABLE IF NOT EXISTS daily_pick (day TEXT PRIMARY KEY, quote_id TEXT NOT NULL, set_by TEXT NOT NULL DEFAULT 'auto', set_at INTEGER NOT NULL DEFAULT 0)",
 ];
 
 /** 上限：正文、译文、随手一笔 500 字；作者 60；出处 120；标签最多 8 个、每个 20 字；总数 20000 条；
@@ -180,8 +181,8 @@ export function hash32(s) {
 }
 
 /**
- * 今日一句：在公开句子里按日期挑一条（同一天所有人看到同一句，换天才换）。
- * 句子按 id 排好序传进来；空列表返回 null。
+ * 今日一句的初选：在公开句子里按日期挑一条。
+ * 句子按 id 排好序传进来；空列表返回 null。挑中的结果由 _today.js 写进 daily_pick 锁住当天。
  * @param {{id:string}[]} sorted
  * @param {string} day
  */

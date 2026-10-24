@@ -75,6 +75,19 @@ test('再抽一句：不和现在这句重复；只有一句就还是它；空�
   assert.equal(D.pickRandom(QS, null, () => 0.9999).id, 'e');
 });
 
+test('设为今日：只主人、抽过、公开、不是今天这句才显示', () => {
+  const pub = { id: 'x1', visibility: 'public' };
+  const pri = { id: 'x2', visibility: 'private' };
+  const today = { id: 't0' };
+  assert.equal(D.canSetToday(true, true, pub, today), true);
+  assert.equal(D.canSetToday(true, true, { id: 'x3' }, null), true, '今天还没有句子也能设');
+  assert.equal(D.canSetToday(false, true, pub, today), false, '访客没有');
+  assert.equal(D.canSetToday(true, false, pub, today), false, '没抽过（今日状态）没有');
+  assert.equal(D.canSetToday(true, true, pri, today), false, '私密句子不能设');
+  assert.equal(D.canSetToday(true, true, { id: 't0', visibility: 'public' }, today), false, '抽到的就是今天这句');
+  assert.equal(D.canSetToday(true, true, null, today), false);
+});
+
 test('moveItem：上移 / 下移，越界不动', () => {
   assert.deepEqual(plain(D.moveItem(['a', 'b', 'c'], 2, -1)), ['a', 'c', 'b']);
   assert.deepEqual(plain(D.moveItem(['a', 'b', 'c'], 0, 1)), ['b', 'a', 'c']);

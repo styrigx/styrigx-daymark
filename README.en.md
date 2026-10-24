@@ -18,7 +18,7 @@ A sub-site of Styrigx's Space. Save a line you read, heard or thought of; one pu
 
 ## Features
 
-- **Echo** (default): today's line, full screen. "Draw another" picks a random line, "Back to today" returns; long-press copies, the corner button shares.
+- **Echo** (default): today's line, full screen. Today's line is locked in D1 on the first request of the day (Asia/Shanghai), so adding lines no longer changes it. "Draw another" picks a random line, "Back to today" returns; the owner can "Set as today" on a drawn public line (the main site's card and lock screen follow); long-press copies, the corner button shares.
 - **Trove**: every line, newest first. The owner gets a "Save a line" button and taps a line to edit it; private lines show a small lock.
 - **Flavors**: the owner's own collections (name + one-line intro, reorder and remove lines), then automatic groups by author ("People").
 - **Save a line**: live preview; line, translation (behind "+ Add translation"), author (autocomplete + recent authors), source (Poetry / Book / Film / Song / Interview / Mine + title), collections, tags, a private note (owner only), public toggle.

@@ -2,7 +2,8 @@
 // - 路由表与 src/api 接口文件一一对应
 // - /api/today 公开（CORS 只给 styrigx.com），其余先问网关；网关出错 → 500 不是 401
 // - 读：visitor 只看公开，owner 看全部；写：非同源 403、visitor 403、校验、增改删
-// - 今日一句：只从公开里挑，同一天固定，按北京时间换天
+// - 今日一句：只从公开里挑，同一天固定，按北京时间换天；当天第一次请求锁进 daily_pick（加句子不变）；
+//   记下的那句被删 / 改私密就重挑；PUT /api/today 设为今日只给主人 + 同源（未登录 401、访客 403、私密 409）
 // - 三页签：出处类型、随手一笔（访客和 /api/today 永不返回）、百味专题的增删改、归属与排序、访客只见公开
 // - 迁移 0001 + 0002 依次跑在 SQLite 上，接口照常工作
 // - wrangler.toml：不开 workers.dev，只挂 daymark.styrigx.com/api/*，服务绑定网关，不持钥匙
@@ -20,6 +21,8 @@ const W = REPO + '/workers/core';
 const worker = (await import(W + '/src/index.js')).default;
 const { API_ROUTES } = await import(W + '/src/routes.js');
 const Q = await import(W + '/src/api/_quotes.js');
+const TD = await import(W + '/src/api/_today.js');
+const { isPublic } = await import(W + '/src/index.js');
 
 /** node:sqlite 包成 D1 的样子 */
 function makeD1(db = new DatabaseSync(':memory:')) {
@@ -281,11 +284,13 @@ test('百味专题 · 访客：只含公开句子，空专题不返回', async (
   assert.deepEqual(o.collections[0].quote_ids, [pri.id, pub.id]);
 });
 
-test('迁移：0001 + 0002 依次跑完，老数据保留、新字段有默认值、接口可用', async () => {
+test('迁移：0001 + 0002 + 0004 依次跑完（0004 重复跑不报错），老数据保留、新字段有默认值、接口可用', async () => {
   const raw = new DatabaseSync(':memory:');
   raw.exec(readFileSync(W + '/migrations/0001_init.sql', 'utf8'));
   raw.prepare("INSERT INTO quotes (id, text, created_at) VALUES ('aaaaaaaaaaaa', '老句子', 1)").run();
   raw.exec(readFileSync(W + '/migrations/0002_three_tabs.sql', 'utf8'));
+  raw.exec(readFileSync(W + '/migrations/0004_daily_pick.sql', 'utf8'));
+  raw.exec(readFileSync(W + '/migrations/0004_daily_pick.sql', 'utf8'));
   const db = makeD1(raw);
   const o = await (await call('/api/quotes', { role: 'owner', db })).json();
   assert.equal(o.quotes[0].text, '老句子');
@@ -297,7 +302,7 @@ test('迁移：0001 + 0002 依次跑完，老数据保留、新字段有默认�
   const cols = (t, d) => d.prepare('PRAGMA table_info(' + t + ')').all().map((r) => r.name).sort();
   const fresh = makeD1();
   await call('/api/quotes', { role: 'owner', db: fresh });
-  for (const t of ['quotes', 'collections', 'collection_quotes']) assert.deepEqual(cols(t, raw), cols(t, fresh.raw), t);
+  for (const t of ['quotes', 'collections', 'collection_quotes', 'daily_pick']) assert.deepEqual(cols(t, raw), cols(t, fresh.raw), t);
 });
 
 /* ================= 种子迁移 0003_seed_quotes ================= */
@@ -362,4 +367,117 @@ test('种子迁移与生成脚本一致（设了 DAYMARK_SEED_JSON=<quotes.json>
   if (!SEED) return t.skip('没设 DAYMARK_SEED_JSON');
   const { seedSql } = await import(REPO + '/scripts/gen-seed-sql.mjs');
   assert.equal(seedSql(JSON.parse(readFileSync(SEED, 'utf8'))), readFileSync(W + '/migrations/0003_seed_quotes.sql', 'utf8'));
+});
+
+/* ================= 锁定今日一句 + 设为今日（daily_pick，迁移 0004） ================= */
+const TODAY = () => Q.dayInShanghai();
+const pickRow = (db, day = TODAY()) => { const r = db.raw.prepare('SELECT quote_id, set_by FROM daily_pick WHERE day = ?').get(day); return r ? { ...r } : null; };
+const getToday = async (db, role = null, p = '/api/today') => (await call(p, { db, role })).json();
+const setToday = (db, id, o = {}) => call('/api/today', { db, method: 'PUT', body: o.body !== undefined ? o.body : { id }, role: 'role' in o ? o.role : 'owner', origin: 'origin' in o ? o.origin : ORIGIN });
+
+test('锁定：当天第一次请求挑好写进 daily_pick（auto），之后加句子当天也不变', async () => {
+  const db = makeD1();
+  for (let i = 0; i < 5; i++) await add(db, { text: '原有' + i });
+  const a = await getToday(db);
+  assert.equal(a.day, TODAY());
+  assert.deepEqual(pickRow(db), { quote_id: a.quote.id, set_by: 'auto' });
+  for (let i = 0; i < 30; i++) await add(db, { text: '新加' + i });
+  for (const role of [null, 'visitor', 'owner']) assert.equal((await getToday(db, role)).quote.id, a.quote.id, String(role));
+  assert.equal((await getToday(db, null, '/api/today?d=' + TODAY())).quote.id, a.quote.id);
+  /* 初选仍是原来的规则：没锁时按 pickForDay 在当时的公开句子里挑 */
+  const fresh = makeD1();
+  for (let i = 0; i < 5; i++) await add(fresh, { text: '原有' + i });
+  const ids = fresh.raw.prepare("SELECT id FROM quotes WHERE visibility = 'public' ORDER BY id").all().map((r) => ({ id: r.id }));
+  assert.equal((await getToday(fresh)).quote.id, Q.pickForDay(ids, TODAY()).id);
+});
+
+test('锁定：看别的日期（?d=）只读不写；那天有记录就读记录', async () => {
+  const db = makeD1();
+  for (let i = 0; i < 6; i++) await add(db, { text: '句' + i });
+  await getToday(db, null, '/api/today?d=2026-01-02');
+  assert.equal(pickRow(db, '2026-01-02'), null);
+  const qs = db.raw.prepare('SELECT id FROM quotes ORDER BY id').all();
+  db.raw.prepare("INSERT INTO daily_pick (day, quote_id, set_by, set_at) VALUES ('2026-01-02', ?, 'owner', 1)").run(qs[3].id);
+  assert.equal((await getToday(db, null, '/api/today?d=2026-01-02')).quote.id, qs[3].id);
+});
+
+test('锁定：记下的那句被删了 / 改成私密了 → 重挑一条公开的并重新锁住；空库不写', async () => {
+  const db = makeD1();
+  await getToday(db);
+  assert.equal(pickRow(db), null, '没有句子不写记录');
+  for (let i = 0; i < 6; i++) await add(db, { text: '句' + i });
+  const first = (await getToday(db)).quote;
+  assert.equal((await call('/api/quotes?id=' + first.id, { role: 'owner', db, method: 'DELETE' })).status, 200);
+  const second = (await getToday(db)).quote;
+  assert.notEqual(second.id, first.id);
+  assert.deepEqual(pickRow(db), { quote_id: second.id, set_by: 'auto' });
+  assert.equal((await call('/api/quotes?id=' + second.id, { role: 'owner', db, method: 'PUT', body: { visibility: 'private' } })).status, 200);
+  for (const role of [null, 'visitor', 'owner']) {
+    const t = await getToday(db, role);
+    assert.notEqual(t.quote.id, second.id, '私密句子不出 /api/today：' + role);
+    assert.ok(!('visibility' in t.quote) && !('note' in t.quote));
+  }
+  assert.notEqual(pickRow(db).quote_id, second.id);
+});
+
+test('锁定：resolveDay 同时首挑以先写进去的为准；persist=false 不写', async () => {
+  const db = makeD1();
+  await Q.ensureSchema(db);
+  for (let i = 0; i < 6; i++) await add(db, { text: '句' + i });
+  const day = '2026-03-04';
+  const hit = await TD.resolveDay(db, day);
+  assert.equal(pickRow(db, day), null);
+  const other = db.raw.prepare('SELECT id FROM quotes WHERE id != ? ORDER BY id').get(hit.id).id;
+  /* 模拟另一请求抢先写入：INSERT OR IGNORE 不覆盖，返回已写的那句 */
+  db.raw.prepare("INSERT INTO daily_pick (day, quote_id, set_by, set_at) VALUES (?, ?, 'auto', 1)").run(day, other);
+  assert.equal((await TD.resolveDay(db, day, { persist: true })).id, other);
+});
+
+test('设为今日：只主人 + 同源；未登录 401、访客 403、非同源 / 没 Origin 403；GET 才公开', async () => {
+  const db = makeD1();
+  for (let i = 0; i < 6; i++) await add(db, { text: '句' + i });
+  const before = (await getToday(db)).quote.id;
+  const target = db.raw.prepare('SELECT id FROM quotes WHERE id != ? ORDER BY id').get(before).id;
+  assert.equal((await setToday(db, target, { role: null })).status, 401);
+  assert.equal((await setToday(db, target, { role: 'visitor' })).status, 403);
+  assert.equal((await setToday(db, target, { origin: 'https://styrigx.com' })).status, 403);
+  assert.equal((await setToday(db, target, { origin: 'https://evil.com' })).status, 403);
+  assert.equal((await setToday(db, target, { origin: null })).status, 403);
+  assert.equal((await call('/api/today', { db, method: 'PUT', body: { id: target }, throws: true })).status, 500);
+  assert.equal((await getToday(db)).quote.id, before, '没设成就不变');
+  assert.equal(pickRow(db).set_by, 'auto');
+  assert.equal(isPublic('/api/today', 'GET'), true);
+  assert.equal(isPublic('/api/today/', 'OPTIONS'), true);
+  assert.equal(isPublic('/api/today', 'PUT'), false);
+  assert.equal((await call('/api/today', { db, method: 'DELETE', role: 'owner' })).status, 405);
+});
+
+test('设为今日：主人改写当天这一句；所有人的 GET 跟着变；之后加句子也不变；校验 / 404 / 私密 409', async () => {
+  const db = makeD1();
+  for (let i = 0; i < 6; i++) await add(db, { text: '句' + i });
+  const pri = await add(db, { text: '私密', visibility: 'private', note: '心里话' });
+  const before = (await getToday(db)).quote.id;
+  const target = db.raw.prepare("SELECT id FROM quotes WHERE id != ? AND visibility = 'public' ORDER BY id").get(before).id;
+  assert.equal((await setToday(db, null, { body: '{x' })).status, 400);
+  assert.equal((await (await setToday(db, 'nope')).json()).error, 'bad-id');
+  assert.equal((await setToday(db, 'ffffffffffff')).status, 404);
+  const p = await setToday(db, pri.id);
+  assert.equal(p.status, 409);
+  assert.equal((await p.json()).error, 'private');
+  assert.equal(pickRow(db).quote_id, before);
+  const r = await setToday(db, target);
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  assert.equal(j.day, TODAY());
+  assert.equal(j.quote.id, target);
+  assert.deepEqual(Object.keys(j.quote).sort(), ['author', 'id', 'source', 'source_type', 'tags', 'text', 'trans']);
+  assert.deepEqual(pickRow(db), { quote_id: target, set_by: 'owner' });
+  for (const role of [null, 'visitor', 'owner']) assert.equal((await getToday(db, role)).quote.id, target, String(role));
+  for (let i = 0; i < 10; i++) await add(db, { text: '再加' + i });
+  assert.equal((await getToday(db)).quote.id, target);
+  /* 再设一次照样覆盖 */
+  assert.equal((await (await setToday(db, before)).json()).quote.id, before);
+  assert.equal((await getToday(db)).quote.id, before);
+  /* GET 的缓存：公开、一分钟（主人改了之后主站很快跟上） */
+  assert.equal((await call('/api/today', { db })).headers.get('Cache-Control'), 'public, max-age=60');
 });
