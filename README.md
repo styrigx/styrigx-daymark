@@ -23,7 +23,7 @@ Styrigx's Space 的子站。读到、听到、想到一句好话，打开就记�
 
 ## 能做什么
 
-- **余响**（默认页）：整屏一句今日一句（按北京时间每天换，同一天所有人看到同一句）。「再抽一句」随机换一句，抽过后可「回到今日」；长按复制，右上角分享。
+- **余响**（默认页）：整屏一句今日一句（按北京时间每天换，同一天所有人看到同一句；当天第一次打开时挑好存进 D1，之后新加句子也不会让当天的句子变）。「再抽一句」随机换一句，抽过后可「回到今日」；主人抽到公开句子时还可以「设为今日」，主站首页和锁屏跟着变；长按复制，右上角分享。
 - **拾录**：全部句子，新的在前。主人右下角「记一句」，点句子就能改；私密句子带小锁。
 - **百味**：主人自建的专题（名字 + 一句话简介，可排序、移出句子），再加按作者自动分好的「人物」。
 - **记一句**：顶部实时预览；句子、译文（点「＋ 加译文」才出现）、作者（自动补全 + 最近作者）、出处（诗词 / 书 / 电影 / 歌 / 访谈 / 自己 + 名字）、归入百味、标签、随手一笔（只有自己看得到）、公开开关。
@@ -44,13 +44,14 @@ Styrigx's Space 的子站。读到、听到、想到一句好话，打开就记�
 
 | 接口 | 谁能用 | 做什么 |
 |---|---|---|
-| `GET /api/today` | 公开（CORS 只给 styrigx.com） | 今日一句 |
+| `GET /api/today` | 公开（CORS 只给 styrigx.com） | 今日一句（当天锁定在 D1 `daily_pick`；只出公开句子） |
+| `PUT /api/today` | 主人 + 同源 | 设为今日：body `{id}`，改写今天那一句（私密句子 409） |
 | `GET /api/quotes` | 有效会话 | 主人全部（带 `note`、`collections`）；访客只有公开句子，不带这两个键 |
 | `POST` / `PUT ?id=` / `DELETE ?id=` `/api/quotes` | 主人 + 同源 | 增改删句子；`collections` 给了就重设归属 |
 | `GET /api/collections` | 有效会话 | 百味专题；访客只看到公开句子，空专题不返回 |
 | `POST` / `PUT ?id=` / `DELETE ?id=` `/api/collections` | 主人 + 同源 | 建 / 改名 / 排序（`quote_ids`）/ 删专题 |
 
-数据库迁移在 `workers/core/migrations/`，CI 部署 core 之前自动跑（`d1 migrations apply styrigx-daymark-core --remote`）。`0003_seed_quotes` 是种子句子（尼采 42 句、《了不起的盖茨比》21 句及两个同名专题）：正文已存在的跳过、同名专题不重建、不删不改任何已有数据。改种子：`node scripts/gen-seed-sql.mjs <quotes.json>` 重新生成（种子原文不进仓库）。
+数据库迁移在 `workers/core/migrations/`，CI 部署 core 之前自动跑（`d1 migrations apply styrigx-daymark-core --remote`）。`0004_daily_pick` 建今日一句的锁定表（每天一行：`day`、`quote_id`、`set_by` auto/owner、`set_at`）。`0003_seed_quotes` 是种子句子（尼采 42 句、《了不起的盖茨比》21 句及两个同名专题）：正文已存在的跳过、同名专题不重建、不删不改任何已有数据。改种子：`node scripts/gen-seed-sql.mjs <quotes.json>` 重新生成（种子原文不进仓库）。
 
 ## 本地开发
 

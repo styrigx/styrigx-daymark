@@ -2,7 +2,7 @@
 // - 顶栏：九宫格 · 余响/拾录/百味 分段滑块 · 留言板圆；没有搜索栏、快捷面板、页脚；抽屉只有四个应用（主站 / 奇趣（书签+星）/ 日刻 / 博客）
 // - 留言板 /guestbook/：长条只有页名，卡片里是共用的 Giscus 讨论串（giscus.app 用 page.route 拦掉）
 // - 页签：默认余响，#trove / #flavors 直达，点页签改 hash；英文页 Echo / Trove / Flavors
-// - 余响：今日一句；再抽一句 → 回到今日；长按复制
+// - 余响：今日一句；再抽一句 → 回到今日；长按复制；主人抽到公开句子 → 设为今日（PUT /api/today）→ 回到今日状态 + toast；访客没有设为今日
 // - 拾录：全部句子新的在前；访客没有「记一句」；主人有，私密句子带锁
 // - 百味：自建专题在前（主人有「＋ 新建」），再是人物（每位作者一组）；点进分组、页内返回；主人上移 / 移出
 // - 记一句：预览、加译文、作者补全 + 最近作者、出处类型 + 名字补全、归入百味（含就地新建）、标签块、随手一笔、公开；
@@ -166,6 +166,82 @@ test('余响：再抽一句 → 出现回到今日；回到今日恢复今日一
   await page.waitForTimeout(700);
   await page.mouse.up();
   await expect(page.locator('#bk-toast')).toHaveText('已复制');
+});
+
+test('余响 · 主人：再抽一句 → 设为今日 → PUT /api/today，回到今日状态，toast 已设为今日', async ({ page }) => {
+  await mock(page, true);
+  let todayQ = { ...QUOTES[0] };
+  const puts = [];
+  await page.route('**/api/today**', async (r) => {
+    const req = r.request();
+    if (req.method() === 'PUT') {
+      const body = req.postDataJSON();
+      puts.push(body);
+      const q = QUOTES.find((x) => x.id === body.id);
+      todayQ = { id: q.id, text: q.text, trans: q.trans, author: q.author, source: q.source, source_type: q.source_type, tags: q.tags };
+      return r.fulfill({ json: { ok: true, day: '2026-10-20', quote: todayQ } });
+    }
+    return r.fulfill({ json: { ok: true, day: '2026-10-20', quote: todayQ } });
+  });
+  /* 抽签固定：主人能抽的是另外三句（私密的 Jobs 排第一），random 0.99 → 最后一句（苏轼《定风波》，公开） */
+  await page.addInitScript(() => { Math.random = () => 0.99; });
+  await page.goto('/');
+  await expect(page.locator('#dm-echo-body')).toContainText('世上本没有路');
+  await expect(page.locator('#dm-tab-trove')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.documentElement.classList.contains('dm-owner'))).toBe(true);
+  await expect(page.locator('#dm-set-today')).toBeHidden();
+  await page.locator('#dm-draw').click();
+  await expect(page.locator('#dm-echo-body')).toContainText('也无风雨也无晴');
+  await expect(page.locator('#dm-set-today')).toBeVisible();
+  await expect(page.locator('#dm-set-today')).toHaveText('设为今日');
+  await expect(page.locator('#dm-back-today')).toBeVisible();
+  /* 与「回到今日」同一套描边胶囊按钮 */
+  const st = await page.evaluate(() => {
+    const a = getComputedStyle(document.querySelector('#dm-set-today'));
+    const b = getComputedStyle(document.querySelector('#dm-back-today'));
+    return { r: a.borderRadius, h: a.height, c: a.color === b.color, bd: a.borderColor === b.borderColor };
+  });
+  expect(st).toEqual({ r: '999px', h: '48px', c: true, bd: true });
+  await page.locator('#dm-set-today').click();
+  await expect(page.locator('#bk-toast')).toHaveText('已设为今日');
+  expect(puts).toEqual([{ id: 'aaaaaaaaaaa4' }]);
+  await expect(page.locator('#dm-echo-day')).toHaveText('10月20日 星期二');
+  await expect(page.locator('#dm-echo-body')).toContainText('也无风雨也无晴');
+  await expect(page.locator('#dm-set-today')).toBeHidden();
+  await expect(page.locator('#dm-back-today')).toBeHidden();
+  /* 再抽一句 → 回到今日：回到新设的那句 */
+  await page.locator('#dm-draw').click();
+  await expect(page.locator('#dm-back-today')).toBeVisible();
+  await page.locator('#dm-back-today').click();
+  await expect(page.locator('#dm-echo-body')).toContainText('也无风雨也无晴');
+  /* 刷新后余响默认就是它（接口记住了） */
+  await page.reload();
+  await expect(page.locator('#dm-echo-body')).toContainText('也无风雨也无晴');
+});
+
+test('余响 · 主人：抽到私密句子没有设为今日', async ({ page }) => {
+  await mock(page, true);
+  await page.addInitScript(() => { Math.random = () => 0; });
+  await page.goto('/');
+  await expect.poll(() => page.evaluate(() => document.documentElement.classList.contains('dm-owner'))).toBe(true);
+  await page.locator('#dm-draw').click();
+  await expect(page.locator('#dm-echo-body')).toContainText('Stay hungry');
+  await expect(page.locator('#dm-back-today')).toBeVisible();
+  await expect(page.locator('#dm-set-today')).toBeHidden();
+});
+
+test('余响 · 访客：再抽一句后没有设为今日；英文页按钮文案 Set as today', async ({ page }) => {
+  await mock(page, false);
+  await page.goto('/');
+  await expect(page.locator('#dm-echo-body')).toContainText('世上本没有路');
+  for (let i = 0; i < 3; i++) {
+    await page.locator('#dm-draw').click();
+    await expect(page.locator('#dm-back-today')).toBeVisible();
+    await expect(page.locator('#dm-set-today')).toBeHidden();
+  }
+  await page.goto('/en/');
+  await expect(page.locator('#dm-set-today')).toHaveText('Set as today');
+  await expect(page.locator('#dm-set-today')).toBeHidden();
 });
 
 test('拾录 · 访客：只有公开句子、没有记一句和锁', async ({ page }) => {

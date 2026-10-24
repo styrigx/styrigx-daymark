@@ -79,7 +79,7 @@ test('抽屉：主站共享外壳的 nav.json（主站 / 奇趣 / 日刻 / 博�
 });
 
 test('首页三块面板 + 记一句弹层的各个部件都在', () => {
-  for (const id of ['dm-pane-echo', 'dm-pane-trove', 'dm-pane-flavors', 'dm-draw', 'dm-back-today', 'dm-share', 'dm-fab',
+  for (const id of ['dm-pane-echo', 'dm-pane-trove', 'dm-pane-flavors', 'dm-draw', 'dm-set-today', 'dm-back-today', 'dm-share', 'dm-fab',
     'dm-cols', 'dm-authors', 'dm-fl-back', 'ed-preview', 'f-text', 'f-trans-toggle', 'f-author-ac', 'f-author-recent',
     'f-stype', 'f-source-ac', 'f-cols', 'f-col-new-row', 'f-tagbox', 'f-tag-sugg', 'f-note', 'f-public', 'edit-del']) {
     assert.match(index, new RegExp('id="' + id + '"'), id);
