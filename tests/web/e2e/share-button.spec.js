@@ -1,14 +1,14 @@
-// 顶栏右胶囊的分享按钮（共享外壳 share.js，2026-10-24）：
+// 顶栏右圆分享按钮（共享外壳 share.js，2026-10-24；留言板撤了，右边只剩这一个 52px 圆）：
 // - 站长（<html data-sgx-role="owner">，线上由网关注入；这里测试里补上）：POST https://styrigx.com/api/share（跨源带 cookie）
 //   { action:'create', reuse:true, name:页面标题, to:当前页（去 lock / why / return / share）, hours:24, session:43200 } → navigator.share 短链；
 //   系统分享被拒 / 没有 → 复制 + toast「已复制分享链接」；用户取消不复制；生成中再点不理；接口失败只 toast，不分享原地址。
 // - 访客：不调接口，直接分享当前页地址；同样的复制兜底。
-// - 360 / 412 宽：胶囊放得下，长条不溢出，页面不横向滚动。
+// - 360 / 412 宽：右圆和左边九宫格圆一样大，长条不溢出，页面不横向滚动。
 import { test, expect } from '@playwright/test';
 
 const CODE = 'AbCdEfGhIjKlMnOpQrStUv';
 const SHORT = 'https://styrigx.com/s/' + CODE;
-const PAGE = '/guestbook/';
+const PAGE = '/404.html';
 const HOMES = ['/', '/en/'];
 
 test.use({ viewport: { width: 412, height: 915 } });
@@ -138,22 +138,22 @@ test.describe('顶栏分享按钮', () => {
   });
 
   for (const w of [360, 412]) {
-    test(`${w} 宽：右胶囊 86×52 贴右边，长条在两者之间不溢出，页面不横向滚动（站长 / 访客一样）`, async ({ page }) => {
+    test(`${w} 宽：右圆分享 52×52 贴右边，长条在两者之间不溢出，页面不横向滚动（站长 / 访客一样）`, async ({ page }) => {
       await page.setViewportSize({ width: w, height: 800 });
       for (const [home, role] of HOMES.flatMap((h) => [[h, 'owner'], [h, 'visitor']])) {
         await go(page, home, role);
         const r = await page.evaluate(() => {
           const b = (s) => document.querySelector(s).getBoundingClientRect();
-          const bar = b('.sgx-topbar'), nav = b('.sgx-tb-nav'), pill = b('.sgx-tb-pill'), grp = b('.sgx-tb-end-group');
+          const bar = b('.sgx-topbar'), nav = b('.sgx-tb-nav'), pill = b('.sgx-tb-pill'), grp = b('.sgx-topbar > .sgx-tb-end[data-sgx-share]');
           const pillEl = document.querySelector('.sgx-tb-pill');
           const clipped = [...pillEl.querySelectorAll('button, .sgx-tb-title')].some((e) => e.scrollWidth > e.clientWidth + 1);
           return { grp: [Math.round(grp.width), Math.round(grp.height)], right: Math.round(bar.right - grp.right), gaps: [Math.round(pill.left - nav.right), Math.round(grp.left - pill.right)],
             pillW: Math.round(pill.width), clipped, overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1 };
         });
-        expect(r.grp).toEqual([86, 52]);
+        expect(r.grp).toEqual([52, 52]);
         expect(r.right).toBe(0);
         expect(r.gaps).toEqual([8, 8]);
-        expect(r.pillW).toBe(w - 32 - 52 - 86 - 16);
+        expect(r.pillW).toBe(w - 32 - 52 - 52 - 16);
         expect(r.clipped, home + ' 长条里的字没被截断').toBe(false);
         expect(r.overflow).toBe(false);
       }

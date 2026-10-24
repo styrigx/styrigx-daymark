@@ -7033,7 +7033,7 @@ body { background: transparent; }
 .dark {
   --dm-panel-shadow: inset 0 0.5px 0 rgba(255,255,255,.09), 0 1px 2px rgba(0,0,0,.45), 0 16px 40px -12px rgba(0,0,0,.55);
 }
-.dm-echo, .dm-card, .dm-fcard, .dm-gb-card {
+.dm-echo, .dm-card, .dm-fcard {
   background-color: var(--sgx-mat); border: 1px solid var(--sgx-outline-variant); box-shadow: var(--dm-panel-shadow); color: var(--sgx-text-primary);
 }
 
@@ -7043,6 +7043,12 @@ main { flex: 1 0 auto; padding-top: var(--sgx-content-top); padding-bottom: calc
 html { scroll-padding-top: calc(var(--nav-h) + var(--sgx-content-gap)); }
 h1, h2, h3 { letter-spacing: -0.02em; }
 
+/* ---- 顶栏右圆分享（.sgx-tb-end.sgx-tb-share，2026-10-24 留言板撤了）：圆本身用共享外壳 .sgx-tb-end（52px，同九宫格圆）；
+   共享外壳的「生成短链中」样式只写在胶囊按钮 .sgx-tb-gbtn 上，这里给单圆补上同一套（图标呼吸、点了不理；动画 sgx-share-busy 在共享外壳） ---- */
+.sgx-tb-end.is-busy { cursor: progress; }
+.sgx-tb-end.is-busy svg { animation: sgx-share-busy .9s ease-in-out infinite alternate; }
+.reduced-motion .sgx-tb-end.is-busy svg { animation: none; opacity: .4; }
+@media (prefers-reduced-motion: reduce) { .sgx-tb-end.is-busy svg { animation: none; opacity: .4; } }
 /* ---- 顶栏长条里的分段滑块（日刻首页：余响 · 拾录 · 百味）= 主站顶栏三栏 .sgx-tb-tabs / .sgx-tb-tab 一比一：
    标签高 --sgx-tb-ic（40px）、15px / 600，间距 4px；当前项 = 抽屉当前项同一套 tonal 药丸（--sgx-nav-selected / --sgx-on-nav-selected），
    其他是次要文字色，悬停 / 按下走状态层。日刻多一个会滑动的指示器（daymark.js 写 --seg-pos 0..2）。
@@ -7065,12 +7071,6 @@ h1, h2, h3 { letter-spacing: -0.02em; }
 }
 .sgx-seg-btn:not([aria-selected="true"]):active { background-image: linear-gradient(var(--sgx-state-pressed-bg), var(--sgx-state-pressed-bg)); }
 .sgx-seg-btn:focus-visible { outline: 2px solid var(--sgx-focus-ring); outline-offset: -2px; }
-/* 窄手机（< 380px，如 360 宽）：右边换成分享 + 留言板胶囊（共享外壳 .sgx-tb-end-group，86px）后长条窄了 34px，
-   英文「Flavors」放不下；只把格子间距 4 → 2px、左右内边距 6 → 0（字号、高度、指示器、三格等宽都不变），中文本来就放得下 */
-@media (max-width: 379.98px) {
-  .sgx-seg { --seg-gap: 2px; }
-  .sgx-seg-btn { padding: 0; }
-}
 /* 宽屏（≥ 600px）长条按内容定宽（同主站）：三个标签最小 88px、左右 16px，三栏等宽（指示器按等宽平移） */
 @media (min-width: 600px) {
   .sgx-seg { flex: 0 0 auto; max-width: none; grid-template-columns: repeat(3, 1fr); }
@@ -7251,8 +7251,3 @@ h1, h2, h3 { letter-spacing: -0.02em; }
 .dm-tagchip button { width: 24px; height: 24px; border: 0; border-radius: 999px; background: transparent; color: inherit; font-size: 16px; line-height: 1; cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { .dm-card, .dm-fcard, .dm-btn, .dm-fab { transition: none; } }
 
-/* ===== 留言板（/guestbook/，layouts/_default/guestbook.html）：一张内容底板（同余响的底板），里面说明 + Giscus ===== */
-.dm-gb-card { padding: 18px 16px 8px; border-radius: 1.75rem; }
-.dm-gb-note { margin: 0 4px 14px; font-size: 14px; line-height: 1.6; color: var(--sgx-text-secondary); }
-.dm-gb-giscus { min-height: 240px; }
-.dm-gb-giscus .giscus, .dm-gb-giscus .giscus-frame { width: 100%; border: 0; }
