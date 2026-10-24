@@ -13,21 +13,20 @@ const base = read('web/layouts/_default/baseof.html');
 const index = read('web/layouts/index.html');
 const css = read('web/assets/css/input.css');
 
-test('顶栏：九宫格 · 长条（首页 = 分段滑块 余响 · 拾录 · 百味，英文 Echo / Trove / Flavors；其他页只有页名）· 右胶囊（分享 + 留言板）', () => {
+test('顶栏：九宫格 · 长条（首页 = 分段滑块 余响 · 拾录 · 百味，英文 Echo / Trove / Flavors；其他页只有页名）· 右圆分享', () => {
   const zh = [...base.matchAll(/"zh" "([^"]+)" "en" "([^"]+)" "hash"/g)].map((m) => [m[1], m[2]]);
   assert.deepEqual(zh, [['余响', 'Echo'], ['拾录', 'Trove'], ['百味', 'Flavors']]);
   assert.match(base, /class="sgx-tb-nav"/);
   assert.match(base, /role="tablist"[^>]*data-dm-seg/);
   assert.match(base, /\{\{ else \}\}\s*<span class="sgx-tb-title">\{\{ \$pageName \}\}<\/span>/);
-  /* 留言板（三个子站同一个 pen-line 图标），链本站 /guestbook/、英文 /en/guestbook/ */
-  assert.match(base, /\$gb := cond \$isEn "\/en\/guestbook\/" "\/guestbook\/"/);
-  /* 2026-10-24：右胶囊 = 分享（共享外壳 share.js，图标 nav.json share）+ 留言板 */
-  assert.match(base, /<div class="sgx-tb-end-group">\s*<button type="button" class="sgx-tb-gbtn sgx-tb-share" data-sgx-share [^>]*>\{\{ index \(resources\.Get "sgx-shell\/nav\.json" \| transform\.Unmarshal\)\.icons "share" \| safeHTML \}\}<\/button>\s*<a class="sgx-tb-gbtn sgx-tb-guestbook" href="\{\{ \$gb \}\}"[^>]*>\{\{ partial "icon\.html" "pen-line" \}\}<\/a>\s*<\/div>/);
+  /* 2026-10-24：留言板撤了，右边只剩分享圆（共享外壳 .sgx-tb-end 样式，同九宫格圆；share.js，图标 nav.json share） */
+  assert.match(base, /<\/div>\s*<button type="button" class="sgx-tb-end sgx-tb-share" data-sgx-share [^>]*>\{\{ index \(resources\.Get "sgx-shell\/nav\.json" \| transform\.Unmarshal\)\.icons "share" \| safeHTML \}\}<\/button>\s*<\/div>\s*<\/header>/);
+  assert.doesNotMatch(base, /sgx-tb-end-group|sgx-tb-gbtn|guestbook/);
   assert.match(base, /resources\.Get "js\/sgx\/share-host\.js" \| js\.Build/);
   assert.doesNotMatch(base, /sgx-tb-me|sgx-tb-avatar|sgx-seg--none/);
 });
 
-test('没有搜索、快捷面板；首页长条不放页名（页名只在留言板 / 404）；也没有标签筛选条', () => {
+test('没有搜索、快捷面板；首页长条不放页名（页名只在 404）；也没有标签筛选条', () => {
   for (const s of [base, index]) {
     assert.doesNotMatch(s, /sgx-tb-search|sgx-tb-quick|sgx-qp|bk-cap|type="search"|role="search"/);
   }
@@ -45,22 +44,13 @@ test('没有版权页脚（© / Powered by），样式也删干净', () => {
   assert.doesNotMatch(css.slice(css.indexOf('/* @sgx-shell:end */')), /(^|[\s,}])footer\b|sgx-powered|sgx-tb-me/);
 });
 
-test('留言板：/guestbook/ + /en/guestbook/，共用 Giscus 讨论串（styrigx/styrigx · Announcements · specific term=guestbook）', () => {
-  const gb = read('web/layouts/_default/guestbook.html');
-  const cfg = read('web/hugo.yaml');
-  assert.match(read('web/content/guestbook.md'), /title: 留言板\nlayout: guestbook\nurl: \/guestbook\//);
-  assert.match(read('web/content/en/guestbook.md'), /title: Guestbook\nlayout: guestbook\nurl: \/en\/guestbook\//);
-  for (const [k, v] of [['repo', 'styrigx/styrigx'], ['repoId', 'R_kgDOVDhNiA'], ['category', 'Announcements'], ['categoryId', 'DIC_kwDOVDhNiM4DJVrs'],
-    ['mapping', 'specific'], ['term', 'guestbook'], ['strict', '0'], ['reactionsEnabled', '1'], ['inputPosition', 'top']]) {
-    assert.match(cfg, new RegExp('\\n      ' + k + ": '" + v.replace('/', '\\/') + "'"), k);
+test('留言板撤了（2026-10-24）：没有 /guestbook/ 页面、模板、脚本、Giscus 配置和样式', async () => {
+  const { existsSync } = await import('node:fs');
+  for (const f of ['web/layouts/_default/guestbook.html', 'web/content/guestbook.md', 'web/content/en/guestbook.md', 'web/assets/js/guestbook.js']) {
+    assert.equal(existsSync(new URL('../../' + f, import.meta.url)), false, f);
   }
-  assert.match(gb, /data-giscus /);
-  assert.match(gb, /data-term="\{\{ \$g\.term \}\}"/);
-  assert.match(gb, /data-lang="\{\{ cond \$isEn "en" "zh-CN" \}\}"/);
-  assert.match(gb, /js\/guestbook\.js/);
-  const js = read('web/assets/js/guestbook.js');
-  assert.match(js, /https:\/\/giscus\.app\/client\.js/);
-  assert.match(js, /setConfig: \{ theme: t \}/);
+  assert.doesNotMatch(read('web/hugo.yaml'), /guestbook|giscus/i);
+  assert.doesNotMatch(css.slice(css.indexOf('/* @sgx-shell:end */')), /dm-gb-|giscus|guestbook/);
 });
 
 test('抽屉：主站共享外壳的 nav.json（主站 / 奇趣 / 日刻 / 博客），模板不写死项；结构同主站', () => {
