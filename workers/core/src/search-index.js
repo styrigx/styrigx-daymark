@@ -9,8 +9,8 @@
  *   - title：句子（约 80 字截断）；subtitle：署名，和页面上一样（「作者 · 《出处》」/ "Author · Source"）
  *   - text：全文 + 译文 + 标签（≤2000 字，只参与匹配，搜索 Worker 不回给前端）
  *   - url：本站没有单句的深链；有作者 → 百味里这位作者的分组 #flavors/a/<作者>，没作者 → 拾录 #trove
- *   - private：访客看不到的句子（visibility = private）标 private:true，只给站长搜到
- *   - 随手一笔（note）只给主人看：只有私密句子的 text 里才带上；公开句子不带，免得访客靠搜索试出内容
+ *   - private：访客看不到的句子（visibility = private）标 private:true，只给管理员搜到
+ *   - 随手一笔（note）只给管理员看：只有私密句子的 text 里才带上；公开句子不带，免得访客靠搜索试出内容
  *
  * 什么时候写：
  *   - 每次写接口成功（增 / 改 / 删 / 以后的导入）后由 index.js 用 ctx.waitUntil 重建

@@ -29,7 +29,7 @@ const SITE = {
     { path: 'web/assets/js/sgx/shell/palette-scheme.js', kind: 'file', parts: ['palette-scheme.js'] },
     /* 原地搜索层（抽屉底栏搜索框原地变成贴键盘的底栏 + 结果层，不跳主站；js/sgx/search-host.js 打包） */
     { path: 'web/assets/js/sgx/shell/search.js', kind: 'file', parts: ['search.js'] },
-    /* 顶栏右胶囊的分享按钮（站长：生成带临时会话的短链再系统分享；访客：分享当前页；js/sgx/share-host.js 打包） */
+    /* 顶栏右胶囊的分享按钮（管理员：生成带临时会话的短链再系统分享；访客：分享当前页；js/sgx/share-host.js 打包） */
     { path: 'web/assets/js/sgx/shell/share.js', kind: 'file', parts: ['share.js'] },
     /* 导航抽屉项 + 图标（baseof.html）、预设种子 + 引擎版本（ui-inherit-run.js） */
     { path: 'web/assets/sgx-shell/nav.json', kind: 'json', parts: ['nav.json'] },

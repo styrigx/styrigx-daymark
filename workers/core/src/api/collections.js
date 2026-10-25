@@ -1,12 +1,12 @@
-// /api/collections —— 百味里的自建专题（主人建的句子合集）。
+// /api/collections —— 百味里的自建专题（管理员建的句子合集）。
 //
 // GET    /api/collections            任何有效会话。按 sort、created_at 排好。
-//                                    返回 {ok:true, owner, collections:[{id,name,intro,created_at,sort,quote_ids:[…按专题内顺序]}]}
+//                                    返回 {ok:true, admin, collections:[{id,name,intro,created_at,sort,quote_ids:[…按专题内顺序]}]}
 //                                    访客：quote_ids 只含公开句子；一句公开句子都没有的专题不返回。
-// POST   /api/collections            owner + 同源：新建。body {name, intro?}；排到最后
-// PUT    /api/collections?id=<id>    owner + 同源：改 name / intro / sort；给 quote_ids 就按它重设专题里的句子和顺序
+// POST   /api/collections            admin + 同源：新建。body {name, intro?}；排到最后
+// PUT    /api/collections?id=<id>    admin + 同源：改 name / intro / sort；给 quote_ids 就按它重设专题里的句子和顺序
 //                                    （排序、移出都走这里；不存在的句子 id 忽略）
-// DELETE /api/collections?id=<id>    owner + 同源：删专题（句子本身不删）
+// DELETE /api/collections?id=<id>    admin + 同源：删专题（句子本身不删）
 // 写操作成功返回 {ok:true, collection}（删除返回 {ok:true}）。
 // 错误：400 bad-json / bad-body / bad-name / bad-sort / bad-quote-ids / nothing / bad-id；403 origin / role；404 not-found；409 limit；413 too-large
 import { json, err, methodNotAllowed } from './_lib.js';
@@ -44,12 +44,12 @@ export async function onRequestGet(context) {
   const role = await verifySession(request, env);
   if (!role) return err('unauthorized', 401);
   await ensureSchema(env.D1_QUOTES);
-  const owner = role === 'owner';
+  const admin = role === 'admin';
   const { results } = await env.D1_QUOTES.prepare(`SELECT ${COLS} FROM collections ORDER BY sort, created_at, id`).all();
-  const by = await members(env.D1_QUOTES, !owner);
+  const by = await members(env.D1_QUOTES, !admin);
   let list = (results || []).map((r) => rowToCollection(r, by[r.id] || []));
-  if (!owner) list = list.filter((c) => c.quote_ids.length > 0);
-  return json({ ok: true, owner, collections: list });
+  if (!admin) list = list.filter((c) => c.quote_ids.length > 0);
+  return json({ ok: true, admin, collections: list });
 }
 
 export async function onRequestPost(context) {

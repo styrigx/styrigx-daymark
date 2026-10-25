@@ -2,16 +2,16 @@
  *
  * 三个页签（顶栏分段滑块，顺序固定）：余响 Echo（默认）· 拾录 Trove · 百味 Flavors。
  *   hash：余响 = 无，#trove，#flavors；百味里的分组 #flavors/c/<专题 id>、#flavors/a/<作者>。只用 replaceState，切页签不加历史。
- * - 余响：整屏一句（今日一句 /api/today，当天锁定）；「再抽一句」从能看到的句子里随机抽（主人：全部；访客：公开），抽过后多一个「回到今日」；
- *   主人抽到公开句子时还多一个「设为今日」（PUT /api/today 改写今天那句，回到今日状态，toast 已设为今日；主站首页和锁屏跟着变）。
+ * - 余响：整屏一句（今日一句 /api/today，当天锁定）；「再抽一句」从能看到的句子里随机抽（管理员：全部；访客：公开），抽过后多一个「回到今日」；
+ *   管理员抽到公开句子时还多一个「设为今日」（PUT /api/today 改写今天那句，回到今日状态，toast 已设为今日；主站首页和锁屏跟着变）。
  *   长按复制（toast 已复制），右上角分享（navigator.share，不支持就复制）。
- * - 拾录：全部句子，新的在前；没有搜索。主人：右下角「记一句」，点句子进编辑；私密句子带小锁。
- * - 百味：先是主人的自建专题（主人多一张「＋ 新建」），再是按作者自动分组的「人物」；点进去是该组的句子（页内返回）。
- *   主人在自建专题里可以上移 / 下移 / 移出句子、删专题。
+ * - 拾录：全部句子，新的在前；没有搜索。管理员：右下角「记一句」，点句子进编辑；私密句子带小锁。
+ * - 百味：先是管理员的自建专题（管理员多一张「＋ 新建」），再是按作者自动分组的「人物」；点进去是该组的句子（页内返回）。
+ *   管理员在自建专题里可以上移 / 下移 / 移出句子、删专题。
  * - 记一句（底部弹层）：顶部实时预览；句子；「＋ 加译文」；作者（自动补全 + 最近作者）；出处（类型 + 名字自动补全）；
- *   归入百味（多选 + 就地新建）；标签（回车 / 逗号成块，推荐已有标签）；随手一笔（只主人看得到）；公开开关。
+ *   归入百味（多选 + 就地新建）；标签（回车 / 逗号成块，推荐已有标签）；随手一笔（只管理员看得到）；公开开关。
  *
- * 数据：GET /api/quotes、GET /api/collections、GET /api/today；写：POST/PUT/DELETE /api/quotes、/api/collections、PUT /api/today（只主人 + 同源）。
+ * 数据：GET /api/quotes、GET /api/collections、GET /api/today；写：POST/PUT/DELETE /api/quotes、/api/collections、PUT /api/today（只管理员 + 同源）。
  * 读请求走 sgxLockSync.apiFetch（401 = 锁定 → 刷新去锁屏）。纯函数导出给 tests/web/daymark.test.mjs。
  */
 (function(){
@@ -121,9 +121,9 @@ function pickRandom(list, excludeId, rnd){
   return pool[Math.min(pool.length - 1, Math.floor(r * pool.length))];
 }
 
-/** 「设为今日」显不显示：主人、抽过、抽到的是公开句子、而且不是今天这句（私密句子不出 /api/today，不让设） */
-function canSetToday(isOwner, isDrawn, q, todayQuote){
-  return !!(isOwner && isDrawn && q && q.visibility !== 'private' && !(todayQuote && todayQuote.id === q.id));
+/** 「设为今日」显不显示：管理员、抽过、抽到的是公开句子、而且不是今天这句（私密句子不出 /api/today，不让设） */
+function canSetToday(isAdmin, isDrawn, q, todayQuote){
+  return !!(isAdmin && isDrawn && q && q.visibility !== 'private' && !(todayQuote && todayQuote.id === q.id));
 }
 
 /** 数组里第 i 项挪 delta 位（越界不动），返回新数组 */
@@ -198,7 +198,7 @@ var doc = G.document;
 var isEn = doc.documentElement.lang === 'en';
 var T = isEn ? {
   add: 'Save a line', edit: 'Edit line', kept: 'Kept.', deleted: 'Deleted.', failed: 'Something went wrong. Please try again.',
-  needText: 'Write the line first.', priv: 'Only you can see this', emptyOwner: 'Nothing kept yet. Tap "Save a line" to keep your first one.',
+  needText: 'Write the line first.', priv: 'Only you can see this', emptyAdmin: 'Nothing kept yet. Tap "Save a line" to keep your first one.',
   emptyVisitor: 'Nothing here yet.', noToday: 'No line for today yet.', copied: 'Copied.', nothingToDraw: 'Nothing to draw from yet.', setToday: "Set as today's line.",
   count: function(n){ return n + (n === 1 ? ' line' : ' lines'); }, newCol: 'New', colCreated: 'Collection created.',
   delQuote: 'Delete this line? This cannot be undone.', delCol: 'Delete this collection? The lines in it stay in your Trove.',
@@ -206,7 +206,7 @@ var T = isEn ? {
   previewPh: 'Your line will show here, just like in Echo.', up: 'Move up', down: 'Move down', remove: 'Remove from collection'
 } : {
   add: '记一句', edit: '编辑这一句', kept: '已拾录', deleted: '已删除', failed: '出了点问题，请再试一次。',
-  needText: '先写下这一句。', priv: '仅自己可见', emptyOwner: '还没有句子。点「记一句」留下第一句。',
+  needText: '先写下这一句。', priv: '仅自己可见', emptyAdmin: '还没有句子。点「记一句」留下第一句。',
   emptyVisitor: '这里还空着。', noToday: '今天还没有句子。', copied: '已复制', nothingToDraw: '还没有可以抽的句子。', setToday: '已设为今日',
   count: function(n){ return n + ' 句'; }, newCol: '新建', colCreated: '专题已建好',
   delQuote: '确定删除这一句吗？删除后无法恢复。', delCol: '确定删除这个专题吗？里面的句子还留在拾录里。',
@@ -217,7 +217,7 @@ var T = isEn ? {
 var $ = function(s){ return doc.querySelector(s); };
 var quotes = [];
 var collections = [];
-var owner = false;
+var admin = false;
 var loaded = false;
 var today = { day: '', quote: null };
 var echoQuote = null;
@@ -321,8 +321,8 @@ function bodyHTML(q){
     + (a ? '<p class="dm-attr">' + esc(a) + '</p>' : '');
 }
 function cardHTML(q, ctl){
-  return '<article class="dm-card" data-id="' + esc(q.id) + '"' + (owner && !ctl ? ' tabindex="0" role="button"' : '') + '>'
-    + (owner && q.visibility === 'private' ? '<span class="dm-lock" role="img" aria-label="' + esc(T.priv) + '" title="' + esc(T.priv) + '">' + LOCK + '</span>' : '')
+  return '<article class="dm-card" data-id="' + esc(q.id) + '"' + (admin && !ctl ? ' tabindex="0" role="button"' : '') + '>'
+    + (admin && q.visibility === 'private' ? '<span class="dm-lock" role="img" aria-label="' + esc(T.priv) + '" title="' + esc(T.priv) + '">' + LOCK + '</span>' : '')
     + bodyHTML(q)
     + ((q.tags || []).length ? '<div class="dm-meta">' + q.tags.map(function(t){ return '<span class="dm-tag">#' + esc(t) + '</span>'; }).join('') + '</div>' : '')
     + (ctl || '')
@@ -333,7 +333,7 @@ function bindCards(box){
   box.querySelectorAll('.dm-card').forEach(function(card){
     var q = findQuote(card.dataset.id);
     onLongPress(card, function(){ copyQuote(findQuote(card.dataset.id)); });
-    if (!owner) return;
+    if (!admin) return;
     function act(e){
       if (e && e.target && e.target.closest && e.target.closest('[data-move],[data-remove]')) return;
       if (groupEditing && box.id === 'dm-g-list') return;
@@ -353,7 +353,7 @@ function renderEcho(){
   $('#dm-echo-body').innerHTML = q ? bodyHTML(q) : '<p class="dm-trans">' + esc(loaded || today.day ? T.noToday : '') + '</p>';
   $('#dm-share').classList.toggle('hidden', !q);
   $('#dm-back-today').classList.toggle('hidden', !drawn);
-  $('#dm-set-today').classList.toggle('hidden', !canSetToday(owner, drawn, q, today.quote));
+  $('#dm-set-today').classList.toggle('hidden', !canSetToday(admin, drawn, q, today.quote));
 }
 $('#dm-draw').addEventListener('click', function(){
   var q = pickRandom(quotes, echoQuote && echoQuote.id);
@@ -364,7 +364,7 @@ $('#dm-back-today').addEventListener('click', function(){ echoQuote = today.quot
 var settingToday = false;
 $('#dm-set-today').addEventListener('click', function(){
   var q = echoQuote;
-  if (settingToday || !canSetToday(owner, drawn, q, today.quote)) return;
+  if (settingToday || !canSetToday(admin, drawn, q, today.quote)) return;
   settingToday = true;
   send('PUT', '/api/today', { id: q.id }).then(function(j){
     today = { day: j.day, quote: j.quote };
@@ -387,13 +387,13 @@ function renderTrove(){
   var box = $('#dm-list');
   box.innerHTML = quotes.map(function(q){ return cardHTML(q); }).join('');
   bindCards(box);
-  $('#dm-empty').textContent = owner ? T.emptyOwner : T.emptyVisitor;
+  $('#dm-empty').textContent = admin ? T.emptyAdmin : T.emptyVisitor;
   $('#dm-empty').classList.toggle('hidden', !loaded || quotes.length > 0);
 }
 
 /* ---------- 百味 ---------- */
 function renderFlavors(){
-  var showCols = owner || collections.length > 0;
+  var showCols = admin || collections.length > 0;
   $('#dm-cols-sec').classList.toggle('hidden', !showCols);
   $('#dm-cols').innerHTML = collections.map(function(c){
     var n = groupQuotes(quotes, collections, { kind: 'c', key: c.id }).length;
@@ -401,7 +401,7 @@ function renderFlavors(){
       + '<span class="dm-fcard-name">' + esc(c.name) + '</span>'
       + (c.intro ? '<span class="dm-fcard-intro">' + esc(c.intro) + '</span>' : '')
       + '<span class="dm-fcard-count">' + esc(T.count(n)) + '</span></button>';
-  }).join('') + (owner ? '<button type="button" class="dm-fcard dm-fcard-new" id="dm-col-new"><span class="dm-fcard-plus" aria-hidden="true">＋</span><span class="dm-fcard-name">' + esc(T.newCol) + '</span></button>' : '');
+  }).join('') + (admin ? '<button type="button" class="dm-fcard dm-fcard-new" id="dm-col-new"><span class="dm-fcard-plus" aria-hidden="true">＋</span><span class="dm-fcard-name">' + esc(T.newCol) + '</span></button>' : '');
   var authors = authorGroups(quotes);
   $('#dm-authors-sec').classList.toggle('hidden', !authors.length);
   $('#dm-authors').innerHTML = authors.map(function(a){
@@ -432,7 +432,7 @@ function renderGroup(){
   $('#dm-g-intro').textContent = col && col.intro ? col.intro : '';
   $('#dm-g-intro').classList.toggle('hidden', !(col && col.intro));
   $('#dm-g-count').textContent = T.count(list.length);
-  var canEdit = owner && !!col;
+  var canEdit = admin && !!col;
   if (!canEdit) groupEditing = false;
   $('#dm-g-tools').classList.toggle('hidden', !canEdit);
   $('#dm-g-edit').textContent = groupEditing ? T.done : T.edit2;
@@ -466,7 +466,7 @@ function renderGroup(){
 function reorder(ids, msg){
   var col = currentCollection(); if (!col) return;
   var before = col.quote_ids.slice();
-  /* 访客看不到的私密句子也在专题里：主人的 quote_ids 就是全部，直接用 */
+  /* 访客看不到的私密句子也在专题里：管理员的 quote_ids 就是全部，直接用 */
   col.quote_ids = ids;
   syncQuoteCollections();
   renderGroup();
@@ -540,7 +540,7 @@ function setTab(next, opts){
   });
   if (seg) seg.style.setProperty('--seg-pos', String(i));
   doc.documentElement.setAttribute('data-dm-active', next);
-  $('#dm-fab').classList.toggle('hidden', !(owner && next === 'trove'));
+  $('#dm-fab').classList.toggle('hidden', !(admin && next === 'trove'));
   if (opts.focus && tabBtns[i]) tabBtns[i].focus();
   writeHash();
   if (changed && !opts.initial) G.scrollTo({ top: scrolls[next] || 0, behavior: 'auto' });
@@ -796,12 +796,12 @@ function boot(){
   renderEcho();
   loadToday();
   Promise.all([getJSON('/api/quotes'), getJSON('/api/collections').catch(function(e){ if (e && e.sgxLocked) throw e; return { collections: [] }; })]).then(function(res){
-    owner = !!res[0].owner;
+    admin = !!res[0].admin;
     quotes = res[0].quotes || [];
     collections = res[1].collections || [];
-    if (owner) syncQuoteCollections();
+    if (admin) syncQuoteCollections();
     loaded = true;
-    doc.documentElement.classList.toggle('dm-owner', owner);
+    doc.documentElement.classList.toggle('dm-admin', admin);
     renderAll();
     setTab(tab, { initial: true });
   }).catch(function(e){

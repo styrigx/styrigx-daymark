@@ -1,7 +1,7 @@
 {{ define "main" }}
 {{ $isEn := or (eq .Lang "en") (hasPrefix .RelPermalink "/en/") }}
 {{/* 日刻首页：三个页签面板（余响 · 拾录 · 百味），顶栏分段滑块切换（daymark.js）。
-   主人（owner）：拾录右下角「记一句」，点句子打开编辑弹层；百味能建专题、排序。访客只读、只看公开句子。
+   管理员（admin）：拾录右下角「记一句」，点句子打开编辑弹层；百味能建专题、排序。访客只读、只看公开句子。
    没有搜索栏、没有标签筛选条。数据全走 daymark.styrigx.com/api/*（接口 Worker，见 workers/）。 */}}
 <main id="dm-main" class="w-full mx-auto" style="max-width:860px;padding-left:16px;padding-right:16px">
   <div id="dm-panes">
@@ -19,7 +19,7 @@
       <button id="dm-draw" type="button" class="dm-btn dm-btn-tonal">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3h5v5"/><path d="M4 20L21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>{{ if $isEn }}Draw another{{ else }}再抽一句{{ end }}
       </button>
-      {{/* 设为今日：只主人、只在抽到一句公开的（不是今日那句）之后出现（daymark.js canSetToday）；点了改写今天那句（PUT /api/today） */}}
+      {{/* 设为今日：只管理员、只在抽到一句公开的（不是今日那句）之后出现（daymark.js canSetToday）；点了改写今天那句（PUT /api/today） */}}
       <button id="dm-set-today" type="button" class="dm-btn dm-btn-outline hidden">{{ if $isEn }}Set as today{{ else }}设为今日{{ end }}</button>
       <button id="dm-back-today" type="button" class="dm-btn dm-btn-outline hidden">{{ if $isEn }}Back to today{{ else }}回到今日{{ end }}</button>
     </div>
@@ -66,12 +66,12 @@
   </div>
 </main>
 
-{{/* ===== 拾录：记一句（主人，右下角浮动按钮） ===== */}}
+{{/* ===== 拾录：记一句（管理员，右下角浮动按钮） ===== */}}
 <button id="dm-fab" type="button" class="dm-fab hidden">
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>{{ if $isEn }}Save a line{{ else }}记一句{{ end }}
 </button>
 
-{{/* ===== 记一句 / 编辑弹层（主人） ===== */}}
+{{/* ===== 记一句 / 编辑弹层（管理员） ===== */}}
 <div id="edit-wrap" class="bk-overlay fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="edit-title">
   <div class="bk-overlay-backdrop absolute inset-0" data-close="edit"></div>
   <div class="bk-panel text-m-on-surface shadow-2xl">

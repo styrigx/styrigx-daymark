@@ -2,10 +2,10 @@
  * SGX 锁屏同步（L6 前端，不跨层：只做“复查 + 重载”）
  *
  * 主站「立即锁定」后，本页切回前台 / bfcache 恢复时，向服务端确认会话：
- *   GET /api/session-check（middleware 白名单放行，由接口自己验签）
+ *   GET /api/lock-session-check（主站鉴权网关的子站精确路由直接回答，验 sgx-lock-session）
  *   - 200 {ok:true}  → 会话有效，什么都不做
  *   - 401 {ok:false} → 会话已失效 → location.reload()，
- *     让 middleware 走正常 302 到主站锁屏（带 return，解锁后可回来）
+ *     让网关走正常 302 到主站锁屏（带 return，解锁后可回来）
  *   - 网络错误       → fail open：不 reload，等下次切回再查
  *
  * 另外暴露 sgxLockSync.apiFetch：各页面数据请求统一走它；
@@ -17,7 +17,7 @@
 "use strict";
 
 var G = typeof globalThis !== 'undefined' ? globalThis : this;
-var CHECK_URL = '/api/session-check';
+var CHECK_URL = '/api/lock-session-check';
 /* 该 401 是否视为“已锁定”（需要 reload）：本站接口的 401 只有这一个意思 */
 function isLockSignal(url, status){
   return status === 401;

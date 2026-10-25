@@ -1,9 +1,9 @@
 // styrigx-daymark-core（workers/core）：
 // - 路由表与 src/api 接口文件一一对应
 // - /api/today 公开（CORS 只给 styrigx.com），其余先问网关；网关出错 → 500 不是 401
-// - 读：visitor 只看公开，owner 看全部；写：非同源 403、visitor 403、校验、增改删
+// - 读：visitor 只看公开，admin 看全部；写：非同源 403、visitor 403、校验、增改删
 // - 今日一句：只从公开里挑，同一天固定，按北京时间换天；当天第一次请求锁进 daily_pick（加句子不变）；
-//   记下的那句被删 / 改私密就重挑；PUT /api/today 设为今日只给主人 + 同源（未登录 401、访客 403、私密 409）
+//   记下的那句被删 / 改私密就重挑；PUT /api/today 设为今日只给管理员 + 同源（未登录 401、访客 403、私密 409）
 // - 三页签：出处类型、随手一笔（访客和 /api/today 永不返回）、百味专题的增删改、归属与排序、访客只见公开
 // - 迁移 0001 + 0002 依次跑在 SQLite 上，接口照常工作
 // - wrangler.toml：不开 workers.dev，只挂 daymark.styrigx.com/api/*，服务绑定网关，不持钥匙
@@ -41,7 +41,7 @@ function makeD1(db = new DatabaseSync(':memory:')) {
 }
 function auth(role = null, throws = false) {
   return {
-    async session() {
+    async lockSession() {
       if (throws) throw new Error('down');
       return role ? { ok: true, role } : { ok: false, reason: 'no-cookie' };
     },
@@ -50,13 +50,13 @@ function auth(role = null, throws = false) {
 const CTX = { waitUntil() {} };
 const ORIGIN = 'https://daymark.styrigx.com';
 function call(p, { role = null, db = makeD1(), method = 'GET', body, origin = ORIGIN, throws = false } = {}) {
-  const headers = { Cookie: 'sgx-verified=x' };
+  const headers = { Cookie: 'sgx-lock-session=x' };
   if (origin) headers.Origin = origin;
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   const req = new Request(ORIGIN + p, { method, headers, body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body) });
   return worker.fetch(req, { AUTH: auth(role, throws), D1_QUOTES: db, KV_SEARCH_INDEX: { async put() {} } }, CTX);
 }
-const add = async (db, q) => (await (await call('/api/quotes', { role: 'owner', db, method: 'POST', body: q })).json()).quote;
+const add = async (db, q) => (await (await call('/api/quotes', { role: 'admin', db, method: 'POST', body: q })).json()).quote;
 
 test('路由表与 src/api 接口文件一一对应', () => {
   const files = readdirSync(W + '/src/api').filter((n) => n.endsWith('.js') && !n.startsWith('_')).map((n) => '/api/' + n.slice(0, -3)).sort();
@@ -67,8 +67,25 @@ test('未登录读 /api/quotes → 401，带运行标记；不存在 404；网�
   const r = await call('/api/quotes');
   assert.equal(r.status, 401);
   assert.equal(r.headers.get('X-Daymark-Runtime'), 'worker');
-  assert.equal((await call('/api/nope', { role: 'owner' })).status, 404);
+  assert.equal((await call('/api/nope', { role: 'admin' })).status, 404);
   assert.equal((await call('/api/quotes', { throws: true })).status, 500);
+});
+
+test('网关回答：只认 AuthVerifier.lockSession 的 admin / visitor；别的角色当无效会话，没有 lockSession 方法当绑定缺失', async () => {
+  assert.equal((await call('/api/quotes', { role: 'owner' })).status, 401);
+  assert.equal((await call('/api/quotes', { role: 'admin' })).status, 200);
+  /* /api/lock-session-check 线上由网关的精确路由回答；万一落到本 Worker，同样问网关 */
+  assert.equal((await call('/api/lock-session-check')).status, 401);
+  assert.deepEqual(await (await call('/api/lock-session-check', { role: 'visitor' })).json(), { ok: true });
+  const req = new Request(ORIGIN + '/api/quotes', { headers: { Cookie: 'sgx-lock-session=x' } });
+  const legacy = { async session() { return { ok: true, role: 'admin' }; } };
+  const errs = console.error;
+  console.error = () => {};
+  try {
+    assert.equal((await worker.fetch(req, { AUTH: legacy, D1_QUOTES: makeD1(), KV_SEARCH_INDEX: { async put() {} } }, CTX)).status, 500);
+  } finally {
+    console.error = errs;
+  }
 });
 
 test('/api/today 公开：不验会话，CORS 只给 styrigx.com，空库 quote=null', async () => {
@@ -82,52 +99,52 @@ test('/api/today 公开：不验会话，CORS 只给 styrigx.com，空库 quote=
 
 test('写：非同源 403、没 Origin 403、访客 403、未登录 401', async () => {
   const body = { text: 'x' };
-  assert.equal((await call('/api/quotes', { role: 'owner', method: 'POST', body, origin: 'https://evil.com' })).status, 403);
-  assert.equal((await call('/api/quotes', { role: 'owner', method: 'POST', body, origin: null })).status, 403);
+  assert.equal((await call('/api/quotes', { role: 'admin', method: 'POST', body, origin: 'https://evil.com' })).status, 403);
+  assert.equal((await call('/api/quotes', { role: 'admin', method: 'POST', body, origin: null })).status, 403);
   assert.equal((await call('/api/quotes', { role: 'visitor', method: 'POST', body })).status, 403);
   assert.equal((await call('/api/quotes', { method: 'POST', body })).status, 401);
 });
 
 test('新增：校验与规整；坏 JSON 400；空句子 400', async () => {
   const db = makeD1();
-  assert.equal((await call('/api/quotes', { role: 'owner', db, method: 'POST', body: '{x' })).status, 400);
-  const r = await call('/api/quotes', { role: 'owner', db, method: 'POST', body: { text: '  ' } });
+  assert.equal((await call('/api/quotes', { role: 'admin', db, method: 'POST', body: '{x' })).status, 400);
+  const r = await call('/api/quotes', { role: 'admin', db, method: 'POST', body: { text: '  ' } });
   assert.equal((await r.json()).error, 'bad-text');
   const q = await add(db, { text: ' 第一行\r\n\n\n\n第二行 ', author: '鲁迅', source: '《呐喊》', tags: '#人生, 勇气 人生', visibility: 'private' });
   assert.match(q.id, /^[0-9a-f]{12}$/);
   assert.equal(q.text, '第一行\n\n第二行');
   assert.deepEqual(q.tags, ['人生', '勇气']);
   assert.equal(q.visibility, 'private');
-  assert.equal((await call('/api/quotes', { role: 'owner', db, method: 'POST', body: { text: 'x', visibility: 'secret' } })).status, 400);
+  assert.equal((await call('/api/quotes', { role: 'admin', db, method: 'POST', body: { text: 'x', visibility: 'secret' } })).status, 400);
 });
 
-test('读：访客只拿公开，主人拿全部且 owner=true', async () => {
+test('读：访客只拿公开，管理员拿全部且 admin=true', async () => {
   const db = makeD1();
   await add(db, { text: '公开' });
   await add(db, { text: '私密', visibility: 'private' });
   const v = await (await call('/api/quotes', { role: 'visitor', db })).json();
-  assert.equal(v.owner, false);
+  assert.equal(v.admin, false);
   assert.deepEqual(v.quotes.map((q) => q.text), ['公开']);
-  const o = await (await call('/api/quotes', { role: 'owner', db })).json();
-  assert.equal(o.owner, true);
+  const o = await (await call('/api/quotes', { role: 'admin', db })).json();
+  assert.equal(o.admin, true);
   assert.equal(o.quotes.length, 2);
 });
 
 test('改、删：只改给的字段；id 不对 400；不存在 404', async () => {
   const db = makeD1();
   const q = await add(db, { text: '原句', author: '甲', tags: ['a'] });
-  const r = await call('/api/quotes?id=' + q.id, { role: 'owner', db, method: 'PUT', body: { trans: 'Original', tags: [] } });
+  const r = await call('/api/quotes?id=' + q.id, { role: 'admin', db, method: 'PUT', body: { trans: 'Original', tags: [] } });
   const u = (await r.json()).quote;
   assert.equal(u.text, '原句');
   assert.equal(u.author, '甲');
   assert.equal(u.trans, 'Original');
   assert.deepEqual(u.tags, []);
-  assert.equal((await call('/api/quotes?id=zz', { role: 'owner', db, method: 'PUT', body: { text: 'y' } })).status, 400);
-  assert.equal((await call('/api/quotes?id=000000000000', { role: 'owner', db, method: 'PUT', body: { text: 'y' } })).status, 404);
-  assert.equal((await call('/api/quotes?id=' + q.id, { role: 'owner', db, method: 'PUT', body: {} })).status, 400);
+  assert.equal((await call('/api/quotes?id=zz', { role: 'admin', db, method: 'PUT', body: { text: 'y' } })).status, 400);
+  assert.equal((await call('/api/quotes?id=000000000000', { role: 'admin', db, method: 'PUT', body: { text: 'y' } })).status, 404);
+  assert.equal((await call('/api/quotes?id=' + q.id, { role: 'admin', db, method: 'PUT', body: {} })).status, 400);
   assert.equal((await call('/api/quotes?id=' + q.id, { role: 'visitor', db, method: 'DELETE' })).status, 403);
-  assert.equal((await call('/api/quotes?id=' + q.id, { role: 'owner', db, method: 'DELETE' })).status, 200);
-  assert.equal((await call('/api/quotes?id=' + q.id, { role: 'owner', db, method: 'DELETE' })).status, 404);
+  assert.equal((await call('/api/quotes?id=' + q.id, { role: 'admin', db, method: 'DELETE' })).status, 200);
+  assert.equal((await call('/api/quotes?id=' + q.id, { role: 'admin', db, method: 'DELETE' })).status, 404);
 });
 
 test('今日一句：只挑公开的；同一天固定；不同天会换', async () => {
@@ -159,24 +176,25 @@ test('wrangler.toml：不开 workers.dev，只挂 daymark 的 /api/*，D1 + 网�
   assert.match(t, /^pattern = "daymark\.styrigx\.com\/api\/\*"$/m);
   assert.match(t, /^database_id = "[0-9a-f-]{36}"$/m);
   assert.match(t, /^service = "styrigx-auth-gateway"$/m);
+  assert.match(t, /^entrypoint = "AuthVerifier"$/m);
   assert.doesNotMatch(t, /SGX_|r2_buckets/);
 });
 
 /* ================= 三页签：出处类型、随手一笔、百味专题 ================= */
-const addC = async (db, c) => (await (await call('/api/collections', { role: 'owner', db, method: 'POST', body: c })).json()).collection;
+const addC = async (db, c) => (await (await call('/api/collections', { role: 'admin', db, method: 'POST', body: c })).json()).collection;
 const listC = async (db, role) => (await (await call('/api/collections', { role, db })).json());
 
-test('出处类型 + 随手一笔：主人拿得到；类型不合法 400', async () => {
+test('出处类型 + 随手一笔：管理员拿得到；类型不合法 400', async () => {
   const db = makeD1();
   const q = await add(db, { text: '床前明月光', author: '李白', source: '静夜思', source_type: 'poetry', note: '小时候背的第一首' });
   assert.equal(q.source_type, 'poetry');
   assert.equal(q.note, '小时候背的第一首');
   assert.deepEqual(q.collections, []);
-  assert.equal((await call('/api/quotes', { role: 'owner', db, method: 'POST', body: { text: 'x', source_type: 'tv' } })).status, 400);
-  const u = (await (await call('/api/quotes?id=' + q.id, { role: 'owner', db, method: 'PUT', body: { source_type: '', note: '改了' } })).json()).quote;
+  assert.equal((await call('/api/quotes', { role: 'admin', db, method: 'POST', body: { text: 'x', source_type: 'tv' } })).status, 400);
+  const u = (await (await call('/api/quotes?id=' + q.id, { role: 'admin', db, method: 'PUT', body: { source_type: '', note: '改了' } })).json()).quote;
   assert.equal(u.source_type, '');
   assert.equal(u.note, '改了');
-  const o = await (await call('/api/quotes', { role: 'owner', db })).json();
+  const o = await (await call('/api/quotes', { role: 'admin', db })).json();
   assert.equal(o.quotes[0].note, '改了');
 });
 
@@ -185,7 +203,7 @@ test('随手一笔不外泄：访客列表、访客专题、/api/today 都没有
   const SECRET = '只给自己看的悄悄话';
   const q = await add(db, { text: '公开的一句', note: SECRET });
   const c = await addC(db, { name: '晨读' });
-  await call('/api/collections?id=' + c.id, { role: 'owner', db, method: 'PUT', body: { quote_ids: [q.id] } });
+  await call('/api/collections?id=' + c.id, { role: 'admin', db, method: 'PUT', body: { quote_ids: [q.id] } });
   const vr = await call('/api/quotes', { role: 'visitor', db });
   const vt = await vr.text();
   assert.ok(!vt.includes(SECRET));
@@ -203,11 +221,11 @@ test('随手一笔不外泄：访客列表、访客专题、/api/today 都没有
   }
 });
 
-test('百味专题：新建校验、写操作只给主人 + 同源', async () => {
+test('百味专题：新建校验、写操作只给管理员 + 同源', async () => {
   const db = makeD1();
-  assert.equal((await call('/api/collections', { role: 'owner', db, method: 'POST', body: { name: ' ' } })).status, 400);
+  assert.equal((await call('/api/collections', { role: 'admin', db, method: 'POST', body: { name: ' ' } })).status, 400);
   assert.equal((await call('/api/collections', { role: 'visitor', db, method: 'POST', body: { name: 'x' } })).status, 403);
-  assert.equal((await call('/api/collections', { role: 'owner', db, method: 'POST', body: { name: 'x' }, origin: 'https://evil.com' })).status, 403);
+  assert.equal((await call('/api/collections', { role: 'admin', db, method: 'POST', body: { name: 'x' }, origin: 'https://evil.com' })).status, 403);
   assert.equal((await call('/api/collections', { db, method: 'POST', body: { name: 'x' } })).status, 401);
   assert.equal((await call('/api/collections', { db })).status, 401);
   const a = await addC(db, { name: '  晨读  ', intro: '早上读的' });
@@ -216,8 +234,8 @@ test('百味专题：新建校验、写操作只给主人 + 同源', async () =>
   assert.equal(a.intro, '早上读的');
   assert.ok(b.sort > a.sort);
   assert.deepEqual(a.quote_ids, []);
-  const o = await listC(db, 'owner');
-  assert.equal(o.owner, true);
+  const o = await listC(db, 'admin');
+  assert.equal(o.admin, true);
   assert.deepEqual(o.collections.map((c) => c.name), ['晨读', '电影台词']);
 });
 
@@ -229,39 +247,39 @@ test('百味专题：归入（句子的 collections）、排序和移出（专�
   const q2 = await add(db, { text: '二', collections: [c.id, d.id, '000000000000'] });
   const q3 = await add(db, { text: '三' });
   assert.deepEqual(q2.collections, [c.id, d.id]);
-  assert.equal((await call('/api/quotes', { role: 'owner', db, method: 'POST', body: { text: 'x', collections: ['bad'] } })).status, 400);
-  let o = await listC(db, 'owner');
+  assert.equal((await call('/api/quotes', { role: 'admin', db, method: 'POST', body: { text: 'x', collections: ['bad'] } })).status, 400);
+  let o = await listC(db, 'admin');
   assert.deepEqual(o.collections[0].quote_ids, [q1.id, q2.id]);
   /* 编辑句子时加入：排到末尾 */
-  const u3 = (await (await call('/api/quotes?id=' + q3.id, { role: 'owner', db, method: 'PUT', body: { collections: [c.id] } })).json()).quote;
+  const u3 = (await (await call('/api/quotes?id=' + q3.id, { role: 'admin', db, method: 'PUT', body: { collections: [c.id] } })).json()).quote;
   assert.deepEqual(u3.collections, [c.id]);
-  o = await listC(db, 'owner');
+  o = await listC(db, 'admin');
   assert.deepEqual(o.collections[0].quote_ids, [q1.id, q2.id, q3.id]);
   /* 排序 + 移出 */
-  const r = await call('/api/collections?id=' + c.id, { role: 'owner', db, method: 'PUT', body: { quote_ids: [q3.id, q1.id], name: '晨读·改' } });
+  const r = await call('/api/collections?id=' + c.id, { role: 'admin', db, method: 'PUT', body: { quote_ids: [q3.id, q1.id], name: '晨读·改' } });
   const cc = (await r.json()).collection;
   assert.deepEqual(cc.quote_ids, [q3.id, q1.id]);
   assert.equal(cc.name, '晨读·改');
   /* 句子自己的归属跟着变 */
-  const all = (await (await call('/api/quotes', { role: 'owner', db })).json()).quotes;
+  const all = (await (await call('/api/quotes', { role: 'admin', db })).json()).quotes;
   assert.deepEqual(all.find((q) => q.id === q2.id).collections, [d.id]);
   /* 句子里只改正文，归属不动 */
-  const u1 = (await (await call('/api/quotes?id=' + q1.id, { role: 'owner', db, method: 'PUT', body: { text: '一·改' } })).json()).quote;
+  const u1 = (await (await call('/api/quotes?id=' + q1.id, { role: 'admin', db, method: 'PUT', body: { text: '一·改' } })).json()).quote;
   assert.deepEqual(u1.collections, [c.id]);
   /* 删句子 → 从专题里消失 */
-  await call('/api/quotes?id=' + q3.id, { role: 'owner', db, method: 'DELETE' });
-  o = await listC(db, 'owner');
+  await call('/api/quotes?id=' + q3.id, { role: 'admin', db, method: 'DELETE' });
+  o = await listC(db, 'admin');
   assert.deepEqual(o.collections[0].quote_ids, [q1.id]);
   /* 坏参数 / 不存在 */
-  assert.equal((await call('/api/collections?id=' + c.id, { role: 'owner', db, method: 'PUT', body: {} })).status, 400);
-  assert.equal((await call('/api/collections?id=' + c.id, { role: 'owner', db, method: 'PUT', body: { quote_ids: 'x' } })).status, 400);
-  assert.equal((await call('/api/collections?id=000000000000', { role: 'owner', db, method: 'PUT', body: { name: 'y' } })).status, 404);
-  assert.equal((await call('/api/collections?id=zz', { role: 'owner', db, method: 'DELETE' })).status, 400);
+  assert.equal((await call('/api/collections?id=' + c.id, { role: 'admin', db, method: 'PUT', body: {} })).status, 400);
+  assert.equal((await call('/api/collections?id=' + c.id, { role: 'admin', db, method: 'PUT', body: { quote_ids: 'x' } })).status, 400);
+  assert.equal((await call('/api/collections?id=000000000000', { role: 'admin', db, method: 'PUT', body: { name: 'y' } })).status, 404);
+  assert.equal((await call('/api/collections?id=zz', { role: 'admin', db, method: 'DELETE' })).status, 400);
   /* 删专题：句子还在，归属没了 */
   assert.equal((await call('/api/collections?id=' + c.id, { role: 'visitor', db, method: 'DELETE' })).status, 403);
-  assert.equal((await call('/api/collections?id=' + c.id, { role: 'owner', db, method: 'DELETE' })).status, 200);
-  assert.equal((await call('/api/collections?id=' + c.id, { role: 'owner', db, method: 'DELETE' })).status, 404);
-  const left = (await (await call('/api/quotes', { role: 'owner', db })).json()).quotes;
+  assert.equal((await call('/api/collections?id=' + c.id, { role: 'admin', db, method: 'DELETE' })).status, 200);
+  assert.equal((await call('/api/collections?id=' + c.id, { role: 'admin', db, method: 'DELETE' })).status, 404);
+  const left = (await (await call('/api/quotes', { role: 'admin', db })).json()).quotes;
   assert.equal(left.length, 2);
   assert.deepEqual(left.find((q) => q.id === q1.id).collections, []);
 });
@@ -273,36 +291,65 @@ test('百味专题 · 访客：只含公开句子，空专题不返回', async (
   const c = await addC(db, { name: '混合' });
   const e = await addC(db, { name: '只有私密' });
   await addC(db, { name: '空的' });
-  await call('/api/collections?id=' + c.id, { role: 'owner', db, method: 'PUT', body: { quote_ids: [pri.id, pub.id] } });
-  await call('/api/collections?id=' + e.id, { role: 'owner', db, method: 'PUT', body: { quote_ids: [pri.id] } });
+  await call('/api/collections?id=' + c.id, { role: 'admin', db, method: 'PUT', body: { quote_ids: [pri.id, pub.id] } });
+  await call('/api/collections?id=' + e.id, { role: 'admin', db, method: 'PUT', body: { quote_ids: [pri.id] } });
   const v = await listC(db, 'visitor');
-  assert.equal(v.owner, false);
+  assert.equal(v.admin, false);
   assert.deepEqual(v.collections.map((x) => x.name), ['混合']);
   assert.deepEqual(v.collections[0].quote_ids, [pub.id]);
-  const o = await listC(db, 'owner');
+  const o = await listC(db, 'admin');
   assert.equal(o.collections.length, 3);
   assert.deepEqual(o.collections[0].quote_ids, [pri.id, pub.id]);
 });
 
-test('迁移：0001 + 0002 + 0004 依次跑完（0004 重复跑不报错），老数据保留、新字段有默认值、接口可用', async () => {
+test('迁移：0001 + 0002 + 0004 + 0005 依次跑完（0004、0005 重复跑不报错），老数据保留、新字段有默认值、接口可用', async () => {
   const raw = new DatabaseSync(':memory:');
   raw.exec(readFileSync(W + '/migrations/0001_init.sql', 'utf8'));
   raw.prepare("INSERT INTO quotes (id, text, created_at) VALUES ('aaaaaaaaaaaa', '老句子', 1)").run();
   raw.exec(readFileSync(W + '/migrations/0002_three_tabs.sql', 'utf8'));
   raw.exec(readFileSync(W + '/migrations/0004_daily_pick.sql', 'utf8'));
   raw.exec(readFileSync(W + '/migrations/0004_daily_pick.sql', 'utf8'));
+  raw.exec(readFileSync(W + '/migrations/0005_daily_pick_set_by_admin.sql', 'utf8'));
   const db = makeD1(raw);
-  const o = await (await call('/api/quotes', { role: 'owner', db })).json();
+  const o = await (await call('/api/quotes', { role: 'admin', db })).json();
   assert.equal(o.quotes[0].text, '老句子');
   assert.equal(o.quotes[0].source_type, '');
   assert.equal(o.quotes[0].note, '');
   const c = await addC(db, { name: '旧句' });
-  assert.equal((await call('/api/collections?id=' + c.id, { role: 'owner', db, method: 'PUT', body: { quote_ids: ['aaaaaaaaaaaa'] } })).status, 200);
+  assert.equal((await call('/api/collections?id=' + c.id, { role: 'admin', db, method: 'PUT', body: { quote_ids: ['aaaaaaaaaaaa'] } })).status, 200);
   /* 迁移里的列与兜底建表一致 */
   const cols = (t, d) => d.prepare('PRAGMA table_info(' + t + ')').all().map((r) => r.name).sort();
   const fresh = makeD1();
-  await call('/api/quotes', { role: 'owner', db: fresh });
+  await call('/api/quotes', { role: 'admin', db: fresh });
   for (const t of ['quotes', 'collections', 'collection_quotes', 'daily_pick']) assert.deepEqual(cols(t, raw), cols(t, fresh.raw), t);
+});
+
+test('迁移 0005：daily_pick.set_by 旧值 owner → admin，auto 不动，其余列原样；重复跑结果不变；没有 owner 相关的约束 / 默认值', async () => {
+  const raw = new DatabaseSync(':memory:');
+  raw.exec(readFileSync(W + '/migrations/0001_init.sql', 'utf8'));
+  raw.exec(readFileSync(W + '/migrations/0002_three_tabs.sql', 'utf8'));
+  raw.exec(readFileSync(W + '/migrations/0004_daily_pick.sql', 'utf8'));
+  const ins = raw.prepare('INSERT INTO daily_pick (day, quote_id, set_by, set_at) VALUES (?, ?, ?, ?)');
+  ins.run('2026-01-01', 'aaaaaaaaaaaa', 'owner', 11);
+  ins.run('2026-01-02', 'bbbbbbbbbbbb', 'auto', 22);
+  ins.run('2026-01-03', 'cccccccccccc', 'owner', 33);
+  raw.prepare('INSERT INTO daily_pick (day, quote_id) VALUES (?, ?)').run('2026-01-04', 'dddddddddddd');
+  const all = () => raw.prepare('SELECT day, quote_id, set_by, set_at FROM daily_pick ORDER BY day').all().map((r) => ({ ...r }));
+  const sql = readFileSync(W + '/migrations/0005_daily_pick_set_by_admin.sql', 'utf8');
+  const want = [
+    { day: '2026-01-01', quote_id: 'aaaaaaaaaaaa', set_by: 'admin', set_at: 11 },
+    { day: '2026-01-02', quote_id: 'bbbbbbbbbbbb', set_by: 'auto', set_at: 22 },
+    { day: '2026-01-03', quote_id: 'cccccccccccc', set_by: 'admin', set_at: 33 },
+    { day: '2026-01-04', quote_id: 'dddddddddddd', set_by: 'auto', set_at: 0 },
+  ];
+  raw.exec(sql);
+  assert.deepEqual(all(), want);
+  raw.exec(sql);
+  assert.deepEqual(all(), want, '重复跑结果不变');
+  const ddl = raw.prepare("SELECT sql FROM sqlite_master WHERE name = 'daily_pick'").get().sql;
+  assert.doesNotMatch(ddl, /owner|CHECK/i, '表定义里没有 owner 默认值或 CHECK，只改数据不用重建表');
+  /* 代码里已经没有写 'owner' 的地方 */
+  assert.doesNotMatch(readFileSync(W + '/src/api/_today.js', 'utf8').replace(/^\/\/.*$/gm, ''), /'owner'/);
 });
 
 /* ================= 种子迁移 0003_seed_quotes ================= */
@@ -322,9 +369,9 @@ test('种子迁移：全新库上连跑两次都不报错，得到 63 句 + 2 �
     { name: '尼采', intro: '尼采原著摘句，英文为公版译本', sort: 0 },
     { name: '了不起的盖茨比', intro: '菲茨杰拉德原文摘句', sort: 1 },
   ]);
-  /* 通过接口读：主人看到两专题；访客看到的都是公开句子；note 为空、类型是 book */
+  /* 通过接口读：管理员看到两专题；访客看到的都是公开句子；note 为空、类型是 book */
   const db = makeD1(raw);
-  const o = await (await call('/api/collections', { role: 'owner', db })).json();
+  const o = await (await call('/api/collections', { role: 'admin', db })).json();
   assert.equal(o.collections[0].quote_ids.length + o.collections[1].quote_ids.length, 63);
   const qs = (await (await call('/api/quotes', { role: 'visitor', db })).json()).quotes;
   assert.equal(qs.length, 63);
@@ -373,7 +420,7 @@ test('种子迁移与生成脚本一致（设了 DAYMARK_SEED_JSON=<quotes.json>
 const TODAY = () => Q.dayInShanghai();
 const pickRow = (db, day = TODAY()) => { const r = db.raw.prepare('SELECT quote_id, set_by FROM daily_pick WHERE day = ?').get(day); return r ? { ...r } : null; };
 const getToday = async (db, role = null, p = '/api/today') => (await call(p, { db, role })).json();
-const setToday = (db, id, o = {}) => call('/api/today', { db, method: 'PUT', body: o.body !== undefined ? o.body : { id }, role: 'role' in o ? o.role : 'owner', origin: 'origin' in o ? o.origin : ORIGIN });
+const setToday = (db, id, o = {}) => call('/api/today', { db, method: 'PUT', body: o.body !== undefined ? o.body : { id }, role: 'role' in o ? o.role : 'admin', origin: 'origin' in o ? o.origin : ORIGIN });
 
 test('锁定：当天第一次请求挑好写进 daily_pick（auto），之后加句子当天也不变', async () => {
   const db = makeD1();
@@ -382,7 +429,7 @@ test('锁定：当天第一次请求挑好写进 daily_pick（auto），之后�
   assert.equal(a.day, TODAY());
   assert.deepEqual(pickRow(db), { quote_id: a.quote.id, set_by: 'auto' });
   for (let i = 0; i < 30; i++) await add(db, { text: '新加' + i });
-  for (const role of [null, 'visitor', 'owner']) assert.equal((await getToday(db, role)).quote.id, a.quote.id, String(role));
+  for (const role of [null, 'visitor', 'admin']) assert.equal((await getToday(db, role)).quote.id, a.quote.id, String(role));
   assert.equal((await getToday(db, null, '/api/today?d=' + TODAY())).quote.id, a.quote.id);
   /* 初选仍是原来的规则：没锁时按 pickForDay 在当时的公开句子里挑 */
   const fresh = makeD1();
@@ -397,7 +444,7 @@ test('锁定：看别的日期（?d=）只读不写；那天有记录就读记�
   await getToday(db, null, '/api/today?d=2026-01-02');
   assert.equal(pickRow(db, '2026-01-02'), null);
   const qs = db.raw.prepare('SELECT id FROM quotes ORDER BY id').all();
-  db.raw.prepare("INSERT INTO daily_pick (day, quote_id, set_by, set_at) VALUES ('2026-01-02', ?, 'owner', 1)").run(qs[3].id);
+  db.raw.prepare("INSERT INTO daily_pick (day, quote_id, set_by, set_at) VALUES ('2026-01-02', ?, 'admin', 1)").run(qs[3].id);
   assert.equal((await getToday(db, null, '/api/today?d=2026-01-02')).quote.id, qs[3].id);
 });
 
@@ -407,12 +454,12 @@ test('锁定：记下的那句被删了 / 改成私密了 → 重挑一条公开
   assert.equal(pickRow(db), null, '没有句子不写记录');
   for (let i = 0; i < 6; i++) await add(db, { text: '句' + i });
   const first = (await getToday(db)).quote;
-  assert.equal((await call('/api/quotes?id=' + first.id, { role: 'owner', db, method: 'DELETE' })).status, 200);
+  assert.equal((await call('/api/quotes?id=' + first.id, { role: 'admin', db, method: 'DELETE' })).status, 200);
   const second = (await getToday(db)).quote;
   assert.notEqual(second.id, first.id);
   assert.deepEqual(pickRow(db), { quote_id: second.id, set_by: 'auto' });
-  assert.equal((await call('/api/quotes?id=' + second.id, { role: 'owner', db, method: 'PUT', body: { visibility: 'private' } })).status, 200);
-  for (const role of [null, 'visitor', 'owner']) {
+  assert.equal((await call('/api/quotes?id=' + second.id, { role: 'admin', db, method: 'PUT', body: { visibility: 'private' } })).status, 200);
+  for (const role of [null, 'visitor', 'admin']) {
     const t = await getToday(db, role);
     assert.notEqual(t.quote.id, second.id, '私密句子不出 /api/today：' + role);
     assert.ok(!('visibility' in t.quote) && !('note' in t.quote));
@@ -433,7 +480,7 @@ test('锁定：resolveDay 同时首挑以先写进去的为准；persist=false �
   assert.equal((await TD.resolveDay(db, day, { persist: true })).id, other);
 });
 
-test('设为今日：只主人 + 同源；未登录 401、访客 403、非同源 / 没 Origin 403；GET 才公开', async () => {
+test('设为今日：只管理员 + 同源；未登录 401、访客 403、非同源 / 没 Origin 403；GET 才公开', async () => {
   const db = makeD1();
   for (let i = 0; i < 6; i++) await add(db, { text: '句' + i });
   const before = (await getToday(db)).quote.id;
@@ -449,10 +496,10 @@ test('设为今日：只主人 + 同源；未登录 401、访客 403、非同源
   assert.equal(isPublic('/api/today', 'GET'), true);
   assert.equal(isPublic('/api/today/', 'OPTIONS'), true);
   assert.equal(isPublic('/api/today', 'PUT'), false);
-  assert.equal((await call('/api/today', { db, method: 'DELETE', role: 'owner' })).status, 405);
+  assert.equal((await call('/api/today', { db, method: 'DELETE', role: 'admin' })).status, 405);
 });
 
-test('设为今日：主人改写当天这一句；所有人的 GET 跟着变；之后加句子也不变；校验 / 404 / 私密 409', async () => {
+test('设为今日：管理员改写当天这一句；所有人的 GET 跟着变；之后加句子也不变；校验 / 404 / 私密 409', async () => {
   const db = makeD1();
   for (let i = 0; i < 6; i++) await add(db, { text: '句' + i });
   const pri = await add(db, { text: '私密', visibility: 'private', note: '心里话' });
@@ -471,13 +518,13 @@ test('设为今日：主人改写当天这一句；所有人的 GET 跟着变；
   assert.equal(j.day, TODAY());
   assert.equal(j.quote.id, target);
   assert.deepEqual(Object.keys(j.quote).sort(), ['author', 'id', 'source', 'source_type', 'tags', 'text', 'trans']);
-  assert.deepEqual(pickRow(db), { quote_id: target, set_by: 'owner' });
-  for (const role of [null, 'visitor', 'owner']) assert.equal((await getToday(db, role)).quote.id, target, String(role));
+  assert.deepEqual(pickRow(db), { quote_id: target, set_by: 'admin' });
+  for (const role of [null, 'visitor', 'admin']) assert.equal((await getToday(db, role)).quote.id, target, String(role));
   for (let i = 0; i < 10; i++) await add(db, { text: '再加' + i });
   assert.equal((await getToday(db)).quote.id, target);
   /* 再设一次照样覆盖 */
   assert.equal((await (await setToday(db, before)).json()).quote.id, before);
   assert.equal((await getToday(db)).quote.id, before);
-  /* GET 的缓存：公开、一分钟（主人改了之后主站很快跟上） */
+  /* GET 的缓存：公开、一分钟（管理员改了之后主站很快跟上） */
   assert.equal((await call('/api/today', { db })).headers.get('Cache-Control'), 'public, max-age=60');
 });

@@ -22,7 +22,7 @@ export const LIMITS = {
 /** 出处类型：诗词 / 书 / 电影 / 歌 / 访谈 / 自己；空 = 没选 */
 export const SOURCE_TYPES = ['poetry', 'book', 'film', 'song', 'interview', 'mine'];
 
-/** 对外的句子字段（note 只给主人，见 rowToQuote） */
+/** 对外的句子字段（note 只给管理员，见 rowToQuote） */
 export const QUOTE_COLS = 'id, text, trans, author, source, source_type, tags, visibility, note, created_at, updated_at';
 
 const done = new WeakSet();
@@ -104,11 +104,11 @@ function parseTags(raw) {
 }
 
 /**
- * D1 行 → 对外对象。随手一笔（note）只有 owner=true 才带上；访客的响应里连这个键都没有。
+ * D1 行 → 对外对象。随手一笔（note）只有 admin=true 才带上；访客的响应里连这个键都没有。
  * @param {Record<string, any>} r
- * @param {boolean} [owner]
+ * @param {boolean} [admin]
  */
-export function rowToQuote(r, owner = false) {
+export function rowToQuote(r, admin = false) {
   /** @type {Record<string, any>} */
   const q = {
     id: r.id,
@@ -122,7 +122,7 @@ export function rowToQuote(r, owner = false) {
     created_at: r.created_at || 0,
     updated_at: r.updated_at || 0,
   };
-  if (owner) q.note = r.note || '';
+  if (admin) q.note = r.note || '';
   return q;
 }
 

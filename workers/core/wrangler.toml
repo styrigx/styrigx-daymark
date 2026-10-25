@@ -4,7 +4,7 @@
 # Pages（styrigx-daymark，配置见 web/wrangler.toml）只放静态文件；页面的会话检查在主站鉴权网关。
 #
 # 安全：
-# - 本 Worker 不持任何钥匙。会话交给鉴权网关验（服务绑定 AUTH → SessionVerifier）。
+# - 本 Worker 不持任何钥匙。会话交给鉴权网关验（服务绑定 AUTH → AuthVerifier.lockSession）。
 # - workers_dev = false、preview_urls = false：只通过 daymark.styrigx.com 的路由访问（它连的是正式 D1）。
 
 name = "styrigx-daymark-core"
@@ -17,7 +17,7 @@ preview_urls = false
 enabled = true
 head_sampling_rate = 1
 
-# 路由：daymark.styrigx.com/api/*。网关另有更精确的 daymark.styrigx.com/api/session-check（精确路径优先），
+# 路由：daymark.styrigx.com/api/*。网关另有更精确的 daymark.styrigx.com/api/lock-session-check（精确路径优先），
 # 页面路径登记在网关（styrigx-space 仓库 workers/auth-gateway/wrangler.toml），这里只管接口。
 [[routes]]
 pattern = "daymark.styrigx.com/api/*"
@@ -29,11 +29,12 @@ database_name = "styrigx-daymark-core"
 database_id = "27f93d06-9cd9-48d9-bd77-8584f68adb1e"
 migrations_dir = "migrations"
 
-# 验票：主站鉴权网关的 RPC 入口（session）。
+# 验票：主站鉴权网关的 RPC 入口 AuthVerifier（lockSession(cookieHeader) → {ok, role: admin|visitor}）。
+# 网关必须先部署出 AuthVerifier 入口，本 Worker 才能部署（CI 的 Gate check 会核对）。
 [[services]]
 binding = "AUTH"
 service = "styrigx-auth-gateway"
-entrypoint = "SessionVerifier"
+entrypoint = "AuthVerifier"
 
 # 全站搜索索引：KV styrigx-search-index（主站 workers/search-index 读它），本 Worker 只写 site:daymark 这一条。
 # 写接口成功后重建（src/search-index.js），下面的 Cron 每小时兜底；KV 里只有句子的标题、署名、链接，不是钥匙。

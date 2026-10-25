@@ -44,5 +44,5 @@ test('Pages 零钥匙：没有 functions/，配置没有变量和绑定，_worke
   const toml = readFileSync(path.join(REPO, 'web/wrangler.toml'), 'utf8');
   assert.match(toml, /^name = "styrigx-daymark"$/m);
   assert.doesNotMatch(toml, /^\[|SGX_/m);
-  assert.doesNotMatch(src, /SGX_|sgx-verified|crypto\.subtle/);
+  assert.doesNotMatch(src, /SGX_|sgx-lock-session|crypto\.subtle/);
 });

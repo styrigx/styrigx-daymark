@@ -1,9 +1,9 @@
 // 日刻首页（手机）：接口用 page.route 假数据，不碰线上。
 // - 顶栏：九宫格 · 余响/拾录/百味 分段滑块 · 右圆分享（2026-10-24 留言板撤了）；没有搜索栏、快捷面板、页脚；抽屉只有四个应用（主站 / 奇趣（书签+星）/ 日刻 / 博客）
 // - 页签：默认余响，#trove / #flavors 直达，点页签改 hash；英文页 Echo / Trove / Flavors
-// - 余响：今日一句；再抽一句 → 回到今日；长按复制；主人抽到公开句子 → 设为今日（PUT /api/today）→ 回到今日状态 + toast；访客没有设为今日
-// - 拾录：全部句子新的在前；访客没有「记一句」；主人有，私密句子带锁
-// - 百味：自建专题在前（主人有「＋ 新建」），再是人物（每位作者一组）；点进分组、页内返回；主人上移 / 移出
+// - 余响：今日一句；再抽一句 → 回到今日；长按复制；管理员抽到公开句子 → 设为今日（PUT /api/today）→ 回到今日状态 + toast；访客没有设为今日
+// - 拾录：全部句子新的在前；访客没有「记一句」；管理员有，私密句子带锁
+// - 百味：自建专题在前（管理员有「＋ 新建」），再是人物（每位作者一组）；点进分组、页内返回；管理员上移 / 移出
 // - 记一句：预览、加译文、作者补全 + 最近作者、出处类型 + 名字补全、归入百味（含就地新建）、标签块、随手一笔、公开；
 //   保存 → 已拾录；编辑时删除要确认
 const { test, expect } = require('@playwright/test');
@@ -16,19 +16,19 @@ const QUOTES = [
 ];
 const COLS = [{ id: 'cccccccccc01', name: '晨读', intro: '早上读一遍', created_at: 1, sort: 0, quote_ids: ['aaaaaaaaaaa3', 'aaaaaaaaaaa1', 'aaaaaaaaaaa2'] }];
 
-async function mock(page, owner) {
-  const list = owner
+async function mock(page, admin) {
+  const list = admin
     ? QUOTES.map((q) => ({ ...q, note: '', collections: COLS[0].quote_ids.includes(q.id) ? ['cccccccccc01'] : [] }))
     : QUOTES.filter((q) => q.visibility === 'public');
-  let cols = owner ? COLS.map((c) => ({ ...c, quote_ids: c.quote_ids.slice() })) : COLS.map((c) => ({ ...c, quote_ids: c.quote_ids.filter((id) => list.some((q) => q.id === id)) }));
+  let cols = admin ? COLS.map((c) => ({ ...c, quote_ids: c.quote_ids.slice() })) : COLS.map((c) => ({ ...c, quote_ids: c.quote_ids.filter((id) => list.some((q) => q.id === id)) }));
   const calls = [];
   await page.route('**/avatar/**', (r) => r.fulfill({ status: 200, contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"/>' }));
-  await page.route('**/api/session-check', (r) => r.fulfill({ json: { ok: true } }));
+  await page.route('**/api/lock-session-check', (r) => r.fulfill({ json: { ok: true } }));
   await page.route('**/api/today**', (r) => r.fulfill({ json: { ok: true, day: '2026-10-20', quote: { ...QUOTES[0] } } }));
   await page.route('**/api/collections**', async (r) => {
     const req = r.request();
     calls.push({ method: req.method(), url: req.url(), body: req.postDataJSON ? req.postDataJSON() : null });
-    if (req.method() === 'GET') return r.fulfill({ json: { ok: true, owner, collections: cols } });
+    if (req.method() === 'GET') return r.fulfill({ json: { ok: true, admin, collections: cols } });
     if (req.method() === 'POST') {
       const c = { id: 'cccccccccc09', name: req.postDataJSON().name, intro: req.postDataJSON().intro || '', created_at: 9, sort: 9, quote_ids: [] };
       cols = cols.concat(c);
@@ -43,7 +43,7 @@ async function mock(page, owner) {
   });
   await page.route('**/api/quotes**', async (r) => {
     const req = r.request();
-    if (req.method() === 'GET') return r.fulfill({ json: { ok: true, owner, quotes: list } });
+    if (req.method() === 'GET') return r.fulfill({ json: { ok: true, admin, quotes: list } });
     const body = req.postDataJSON();
     calls.push({ method: req.method(), url: req.url(), body });
     if (req.method() === 'POST') {
@@ -167,7 +167,7 @@ test('余响：再抽一句 → 出现回到今日；回到今日恢复今日一
   await expect(page.locator('#bk-toast')).toHaveText('已复制');
 });
 
-test('余响 · 主人：再抽一句 → 设为今日 → PUT /api/today，回到今日状态，toast 已设为今日', async ({ page }) => {
+test('余响 · 管理员：再抽一句 → 设为今日 → PUT /api/today，回到今日状态，toast 已设为今日', async ({ page }) => {
   await mock(page, true);
   let todayQ = { ...QUOTES[0] };
   const puts = [];
@@ -182,12 +182,12 @@ test('余响 · 主人：再抽一句 → 设为今日 → PUT /api/today，回�
     }
     return r.fulfill({ json: { ok: true, day: '2026-10-20', quote: todayQ } });
   });
-  /* 抽签固定：主人能抽的是另外三句（私密的 Jobs 排第一），random 0.99 → 最后一句（苏轼《定风波》，公开） */
+  /* 抽签固定：管理员能抽的是另外三句（私密的 Jobs 排第一），random 0.99 → 最后一句（苏轼《定风波》，公开） */
   await page.addInitScript(() => { Math.random = () => 0.99; });
   await page.goto('/');
   await expect(page.locator('#dm-echo-body')).toContainText('世上本没有路');
   await expect(page.locator('#dm-tab-trove')).toBeVisible();
-  await expect.poll(() => page.evaluate(() => document.documentElement.classList.contains('dm-owner'))).toBe(true);
+  await expect.poll(() => page.evaluate(() => document.documentElement.classList.contains('dm-admin'))).toBe(true);
   await expect(page.locator('#dm-set-today')).toBeHidden();
   await page.locator('#dm-draw').click();
   await expect(page.locator('#dm-echo-body')).toContainText('也无风雨也无晴');
@@ -218,11 +218,11 @@ test('余响 · 主人：再抽一句 → 设为今日 → PUT /api/today，回�
   await expect(page.locator('#dm-echo-body')).toContainText('也无风雨也无晴');
 });
 
-test('余响 · 主人：抽到私密句子没有设为今日', async ({ page }) => {
+test('余响 · 管理员：抽到私密句子没有设为今日', async ({ page }) => {
   await mock(page, true);
   await page.addInitScript(() => { Math.random = () => 0; });
   await page.goto('/');
-  await expect.poll(() => page.evaluate(() => document.documentElement.classList.contains('dm-owner'))).toBe(true);
+  await expect.poll(() => page.evaluate(() => document.documentElement.classList.contains('dm-admin'))).toBe(true);
   await page.locator('#dm-draw').click();
   await expect(page.locator('#dm-echo-body')).toContainText('Stay hungry');
   await expect(page.locator('#dm-back-today')).toBeVisible();
@@ -251,7 +251,7 @@ test('拾录 · 访客：只有公开句子、没有记一句和锁', async ({ p
   await expect(page.locator('.dm-lock')).toHaveCount(0);
 });
 
-test('拾录 · 主人：新的在前、私密带锁、右下角记一句；点句子进入编辑，删除要确认', async ({ page }) => {
+test('拾录 · 管理员：新的在前、私密带锁、右下角记一句；点句子进入编辑，删除要确认', async ({ page }) => {
   const calls = await mock(page, true);
   await page.goto('/#trove');
   await expect(page.locator('#dm-list .dm-card')).toHaveCount(4);
@@ -339,7 +339,7 @@ test('记一句：预览、加译文、作者补全 + 最近作者、出处类�
   await expect(page.locator('#dm-list .dm-card').first()).toContainText('人生如逆旅');
 });
 
-test('百味 · 主人：专题在前带新建、人物每位作者一组；进分组页内返回；上移和移出走 PUT', async ({ page }) => {
+test('百味 · 管理员：专题在前带新建、人物每位作者一组；进分组页内返回；上移和移出走 PUT', async ({ page }) => {
   const calls = await mock(page, true);
   await page.goto('/#flavors');
   await expect(page.locator('#dm-cols .dm-fcard')).toHaveCount(2);

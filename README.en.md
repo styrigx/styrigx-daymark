@@ -18,10 +18,10 @@ A sub-site of Styrigx's Space. Save a line you read, heard or thought of; one pu
 
 ## Features
 
-- **Echo** (default): today's line, full screen. Today's line is locked in D1 on the first request of the day (Asia/Shanghai), so adding lines no longer changes it. "Draw another" picks a random line, "Back to today" returns; the owner can "Set as today" on a drawn public line (the main site's card and lock screen follow); long-press copies, the corner button shares.
-- **Trove**: every line, newest first. The owner gets a "Save a line" button and taps a line to edit it; private lines show a small lock.
-- **Flavors**: the owner's own collections (name + one-line intro, reorder and remove lines), then automatic groups by author ("People").
-- **Save a line**: live preview; line, translation (behind "+ Add translation"), author (autocomplete + recent authors), source (Poetry / Book / Film / Song / Interview / Mine + title), collections, tags, a private note (owner only), public toggle.
+- **Echo** (default): today's line, full screen. Today's line is locked in D1 on the first request of the day (Asia/Shanghai), so adding lines no longer changes it. "Draw another" picks a random line, "Back to today" returns; the admin can "Set as today" on a drawn public line (the main site's card and lock screen follow); long-press copies, the corner button shares.
+- **Trove**: every line, newest first. The admin gets a "Save a line" button and taps a line to edit it; private lines show a small lock.
+- **Flavors**: the admin's own collections (name + one-line intro, reorder and remove lines), then automatic groups by author ("People").
+- **Save a line**: live preview; line, translation (behind "+ Add translation"), author (autocomplete + recent authors), source (Poetry / Book / Film / Song / Interview / Mine + title), collections, tags, a private note (admin only), public toggle.
 - Visitors are read-only and only see public lines; the private note never appears in visitor responses or `/api/today`.
 
 ## Stack
@@ -31,7 +31,7 @@ A sub-site of Styrigx's Space. Save a line you read, heard or thought of; one pu
 | Pages | Hugo + Tailwind on Cloudflare Pages (static only) |
 | API | Worker `styrigx-daymark-core` (`workers/core/`) on `daymark.styrigx.com/api/*` |
 | Data | Cloudflare D1 `styrigx-daymark-core` |
-| Auth | Holds no keys: the main site's auth gateway checks sessions for pages; the API asks it via a service binding |
+| Auth | Holds no keys: the main site's auth gateway checks the lock session (`sgx-lock-session`) for pages; the API asks it via a service binding (`AuthVerifier.lockSession`, roles `admin` / `visitor`) |
 
 ## Shared shell
 

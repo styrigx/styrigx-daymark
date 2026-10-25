@@ -2,27 +2,27 @@
   "_note": "scripts/sync-shell.mjs 写入，勿手改：记录本仓库的共享外壳副本来自主站哪个版本",
   "source": "styrigx/styrigx-space",
   "dir": "web/shared/shell",
-  "ref": "main",
-  "version": "1fba3fc24d1f",
+  "ref": "main（#211 + 安全修复 A，待合并）",
+  "version": "23673824df0b",
   "files": {
-    "tokens.css": "5fe294b92a0fd42079e966ec7d23aba951762447df220783a74f4ec7814b7b43",
+    "tokens.css": "f56a0696035458455a1c210634bd9c3abdb3d6acb332e00f5e327f90e528fba8",
     "shell.css": "703a1fff24775fb2470bee53fcb1f9d4ab8c0e963dc17c32f1735a1efaa42de5",
     "palette-scheme.js": "c51e4304e54ee888768144ca29bc52898479e79dd7ba4dfdda37e8664e7c2f63",
     "search.js": "d9b091a8cbcf675054e4fcb8ca52dfa7630f9e0bfbdb8a417ab8aafe03973ee8",
-    "share.js": "12db832c0c52f5baf583a8503e68161e1d108ec2e98d88113c0087d7a1df947c",
+    "share.js": "1835057b213f5550b9219ea3ffb6f4a3268641865ded947e3ae5fdd7ecd65991",
     "nav.json": "1465967a1f517e1bf682874d359b41641368931689202d129db0876ee0f2e458",
     "palettes.json": "8acce76979dfeec50d305c8f84e59a83c56b7bbbfa4b45c2f85d631f90bc3c08",
     "ui-cookie-read.js": "370a9d39abd0d40fb6a85df597fcd9a34c5ea40bb847c87f57d7f0757d6e70bf",
     "ui-cookie-contract.json": "677ab3413abcad31e6a170d4c77e999d6cb7c22fe2cbc751332e65b66f7975a0",
     "favicon.js": "4bb7f9fe412988861d682b8c2a88eb93f68fc39f9fb51bd5df38441755b5d433",
     "favicon.svg": "d0140f4bb1f7fe856fc499f996b347bbbcab55c1f15e2c4a6d94b118c3aa569b",
-    "README.md": "a15e3f0625b8676dcb9149520b851d80e9834b9962a13a64b43dd66396ba08e7"
+    "README.md": "f2eeb5fb85dad4f925192423c8cf51ecec444ae13ae77e66a5d80653e2657240"
   },
   "vendored": {
-    "web/assets/css/input.css": "aff48125350478f80210d8a432876967ba4457adf82f1d19a8c0bd2a160e54ae",
+    "web/assets/css/input.css": "d53e42b903fbaee7965f4d44a79dd51b6da1242c4f1cac88d40051745bae2468",
     "web/assets/js/sgx/shell/palette-scheme.js": "4d21311374acb7daaf8c2b0c8cda71d99f4a75ee96da3614ed3d95fa458b4b17",
     "web/assets/js/sgx/shell/search.js": "a065ace177d976ce642d8d6a22450f5f15a2efd3202d6144d0e743b860a1724a",
-    "web/assets/js/sgx/shell/share.js": "024dc9071fb285027282c8aeaa992a9ec63c35b90327269525b4e29ee2d6088f",
+    "web/assets/js/sgx/shell/share.js": "36bc004012586c0aaaaac84b29e45a9057738c344f768f1725a4960030d68426",
     "web/assets/sgx-shell/nav.json": "1465967a1f517e1bf682874d359b41641368931689202d129db0876ee0f2e458",
     "web/assets/sgx-shell/palettes.json": "8acce76979dfeec50d305c8f84e59a83c56b7bbbfa4b45c2f85d631f90bc3c08"
   }

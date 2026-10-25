@@ -5,8 +5,8 @@
 //   新增句子不会让当天的句子变。只出公开句子；记下的那句被删了或改成私密了，就重挑并重新锁住。
 //   可带 ?d=YYYY-MM-DD 看某天的（有记录读记录，没有就按日期算，不写库）。
 //   返回 {ok:true, day, quote|null}（quote 只带 id/text/trans/author/source/source_type/tags；随手一笔 note、可见性、百味归属一律不带）。
-//   Cache-Control: public, max-age=60（主人改了今日之后，主站最多一分钟跟上）。
-// PUT（只主人 + 同源，同其他写接口）：余响「设为今日」。body {id}，改写北京时间今天的那一句，返回同 GET 的形状。
+//   Cache-Control: public, max-age=60（管理员改了今日之后，主站最多一分钟跟上）。
+// PUT（只管理员 + 同源，同其他写接口）：余响「设为今日」。body {id}，改写北京时间今天的那一句，返回同 GET 的形状。
 //   错误：400 bad-json / bad-id；401 未登录；403 origin / role；404 not-found；409 private（私密句子不能设为今日）。
 import { json, err } from './_lib.js';
 import { ensureSchema, dayInShanghai, ID_RE } from './_quotes.js';

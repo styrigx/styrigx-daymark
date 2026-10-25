@@ -4,7 +4,7 @@
 // - 读（resolveDay）：当天已有记录且那句还在、还是公开的 → 就是它；
 //   否则（没记录 / 那句被删了 / 改成私密了）按 pickForDay 在公开句子里重挑。
 //   只有 persist=true（北京时间的今天）才把重挑的结果写回去锁住；看别的日期（?d=）只读不写。
-// - 写（setPick）：主人「设为今日」，覆盖当天那一行（set_by='owner'）。
+// - 写（setPick）：管理员「设为今日」，覆盖当天那一行（set_by='admin'：手动设的；自动挑的是 'auto'。旧库里的 'owner' 由迁移 0005 改成 'admin'）。
 // - 公开出口只有公开句子：私密句子不会被读出来，也不让设为今日（today.js 回 409 private）。
 import { pickForDay, rowToQuote } from './_quotes.js';
 
@@ -57,10 +57,10 @@ export async function resolveDay(db, day, o = {}) {
   return hit;
 }
 
-/** 主人设为今日：覆盖这一天的记录 */
+/** 管理员设为今日：覆盖这一天的记录 */
 export async function setPick(db, day, quoteId, now = Date.now()) {
   await db.prepare(
-    "INSERT INTO daily_pick (day, quote_id, set_by, set_at) VALUES (?1, ?2, 'owner', ?3) " +
-    "ON CONFLICT(day) DO UPDATE SET quote_id = excluded.quote_id, set_by = 'owner', set_at = excluded.set_at"
+    "INSERT INTO daily_pick (day, quote_id, set_by, set_at) VALUES (?1, ?2, 'admin', ?3) " +
+    "ON CONFLICT(day) DO UPDATE SET quote_id = excluded.quote_id, set_by = 'admin', set_at = excluded.set_at"
   ).bind(day, quoteId, now).run();
 }
