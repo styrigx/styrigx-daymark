@@ -44,8 +44,8 @@ __applyLayout();
    长条：首页 = 分段滑块 余响 · 拾录 · 百味（Echo / Trove / Flavors，强调色滑块；同主站首页长条里放三个标签）；
    其他页（404）= 只有页名（.sgx-tb-title，居中、太长省略号），不放图标。没有搜索、没有快捷面板；顶栏下面也没有大标题。
    首页：页签是 role=tab 的按钮，daymark.js 切换面板（hash：无 / #trove / #flavors）。
-   右圆 .sgx-tb-end.sgx-tb-share（共享外壳 .sgx-tb-end 样式，52px 圆 + 22px 图标，同左边九宫格圆；2026-10-24 留言板撤了，只剩分享；站长和访客一样）：
-   共享外壳 share.js（js/sgx/share-host.js 挂上）：站长生成带临时会话的短链再系统分享，访客分享当前页地址；没有系统分享就复制。
+   右圆 .sgx-tb-end.sgx-tb-share（共享外壳 .sgx-tb-end 样式，52px 圆 + 22px 图标，同左边九宫格圆；2026-10-24 留言板撤了，只剩分享；管理员和访客一样）：
+   共享外壳 share.js（js/sgx/share-host.js 挂上）：管理员生成带临时会话的短链再系统分享，访客分享当前页地址；没有系统分享就复制。
    （余响卡片里自己的分享按钮 #dm-share 不变：分享句子文字。）
    头像在导航抽屉头（链主站）。外观和语言跟主站（sgx-ui cookie，见 ui-inherit-run.js）。 */}}
 {{ $pageName := .Title }}

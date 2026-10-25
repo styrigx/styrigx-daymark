@@ -15,7 +15,7 @@ html, body {
 @supports (overflow-x: clip) {
   html, body { overflow-x: clip; }
 }
-/* @sgx-shell:begin styrigx/styrigx-space@main web/shared/shell v1fba3fc24d1f（scripts/sync-shell.mjs 写入，勿手改） */
+/* @sgx-shell:begin styrigx/styrigx-space@main web/shared/shell v23673824df0b（scripts/sync-shell.mjs 写入，勿手改） */
 /* ---- tokens.css ---- */
 /* 由 styrigx-space scripts/gen-shell.mjs 从 web/data/palette-roles.json 生成，勿手改；子站用 scripts/sync-shell.mjs 同步。 */
 /* 22 套七色调色板（1 背景色 + 6 前景撞色）：<html data-palette="<id>">（默认 dustyblue 不写），深色 <html class="dark">；自定义种子在运行时用 palette-scheme.js 的 rolesCss() 覆盖。 */
@@ -6644,10 +6644,10 @@ html, body {
   --sgx-btn-secondary-bg: var(--sgx-secondary-container);
   --sgx-btn-secondary-fg: var(--sgx-on-secondary-container);
   /* C3 进入凭证按钮（锁屏 / 账号门口 / 弹层共用）：原来固定深蓝，现在跟主题色角色走 */
-  --sgx-door-btn-bg: var(--sgx-btn-primary-bg);
-  --sgx-door-btn-fg: var(--sgx-btn-primary-fg);
-  --sgx-door-btn2-bg: var(--sgx-btn-secondary-bg);
-  --sgx-door-btn2-fg: var(--sgx-btn-secondary-fg);
+  --sgx-credential-btn-bg: var(--sgx-btn-primary-bg);
+  --sgx-credential-btn-fg: var(--sgx-btn-primary-fg);
+  --sgx-credential-btn-secondary-bg: var(--sgx-btn-secondary-bg);
+  --sgx-credential-btn-secondary-fg: var(--sgx-btn-secondary-fg);
 }
 /* ---- shell.css ---- */
 /* 由 styrigx-space scripts/gen-shell.mjs 从 web/assets/css/input.css 的 @shell 标记段 生成，勿手改；子站用 scripts/sync-shell.mjs 同步。 */
@@ -7152,8 +7152,8 @@ h1, h2, h3 { letter-spacing: -0.02em; }
 /* 拾录：句子卡（内容底板，小一号圆角） */
 .dm-pane-trove { padding-bottom: 88px; }
 .dm-card { position: relative; border-radius: 1.25rem; padding: 16px 18px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-.dm-owner .dm-card[role="button"] { cursor: pointer; transition: transform .15s ease; }
-.dm-owner .dm-card[role="button"]:active { transform: scale(.99); }
+.dm-admin .dm-card[role="button"] { cursor: pointer; transition: transform .15s ease; }
+.dm-admin .dm-card[role="button"]:active { transform: scale(.99); }
 .dm-card .dm-text { font-family: var(--dm-serif); font-size: 17px; line-height: 1.7; white-space: pre-line; overflow-wrap: anywhere; }
 .dm-card .dm-lock + .dm-text { padding-right: 22px; }
 .dm-card .dm-trans { margin-top: 6px; font-size: 14px; line-height: 1.6; color: var(--sgx-text-secondary); white-space: pre-line; overflow-wrap: anywhere; }

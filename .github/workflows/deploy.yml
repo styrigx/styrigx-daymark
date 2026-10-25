@@ -101,7 +101,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Gate check - gateway must already guard daymark pages
+      - name: Gate check - gateway must already guard daymark pages and expose AuthVerifier
         # Pages 没有验票代码、core 要经服务绑定问网关：网关必须先登记 daymark.styrigx.com。
         # 未登录访问首页必须是网关回的 302（带 X-SGX-Runtime: worker）。不满足就什么都不部署。
         # 例外：首次部署时域名还没解析（Pages 自定义域名要等项目建好后再绑），这时页面不对外，放行。
@@ -113,6 +113,14 @@ jobs:
           rt=$(printf '%s' "$hdr" | awk -F': ' 'tolower($1)=="x-sgx-runtime"{print $2}')
           echo "daymark.styrigx.com/ -> $code runtime=${rt:-none}"
           [ "$code" = "302" ] && [ "$rt" = "worker" ] || { echo "::error::gateway is not guarding daymark.styrigx.com yet; deploy the gateway first"; exit 1; }
+          # core 的服务绑定是 entrypoint = "AuthVerifier"（lockSession）：网关必须已是带 AuthVerifier 的版本。
+          # 同一版网关才有 daymark.styrigx.com/api/lock-session-check 这条精确路由：未登录要网关回 401（X-SGX-Runtime: worker），
+          # 落到 core（X-Daymark-Runtime）说明网关还是旧版，不部署。
+          hdr=$(curl -sS -o /dev/null -D - -w 'HTTP_CODE:%{http_code}\n' https://daymark.styrigx.com/api/lock-session-check | tr -d '\r')
+          code=$(printf '%s' "$hdr" | sed -n 's/^HTTP_CODE://p')
+          rt=$(printf '%s' "$hdr" | awk -F': ' 'tolower($1)=="x-sgx-runtime"{print $2}')
+          echo "daymark.styrigx.com/api/lock-session-check -> $code runtime=${rt:-none}"
+          [ "$code" = "401" ] && [ "$rt" = "worker" ] || { echo "::error::gateway does not answer /api/lock-session-check yet (no AuthVerifier); deploy the main-site gateway first"; exit 1; }
 
       - name: Apply D1 migrations
         uses: cloudflare/wrangler-action@v3
@@ -151,7 +159,7 @@ jobs:
           ok=0
           check /api/quotes 401 X-Daymark-Runtime || ok=1
           check /api/today 200 X-Daymark-Runtime || ok=1
-          check /api/session-check 401 X-SGX-Runtime || ok=1
+          check /api/lock-session-check 401 X-SGX-Runtime || ok=1
           exit $ok
 
   deploy-pages:

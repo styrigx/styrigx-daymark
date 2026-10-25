@@ -1,4 +1,4 @@
-/* @sgx-shell:begin styrigx/styrigx-space@main web/shared/shell v1fba3fc24d1f（scripts/sync-shell.mjs 写入，勿手改） */
+/* @sgx-shell:begin styrigx/styrigx-space@main web/shared/shell v23673824df0b（scripts/sync-shell.mjs 写入，勿手改） */
 /* ---- share.js ---- */
 /**
  * @fileoverview 子站顶栏的分享按钮（共享外壳组件，2026-10-24；gen-shell 原样复制成 web/shared/shell/share.js，三个子站 sync-shell 同步）。
@@ -6,7 +6,7 @@
  *
  * 顶栏右边是一个胶囊 .sgx-tb-end-group，里面两个按钮：[分享 .sgx-tb-gbtn[data-sgx-share]] [本站自己的按钮（子站 = 留言板）]。
  * 点分享：
- * - 站长（<html data-sgx-role="owner">，网关注入）：POST https://styrigx.com/api/share（credentials: include，跨源只许这一种请求）
+ * - 管理员（<html data-sgx-role="admin">，网关注入）：POST https://styrigx.com/api/share（credentials: include，跨源只许这一种请求）
  *   { action:'create', reuse:true, name: 页面标题（截 24 字）, to: 当前页（origin + pathname + search，去掉 lock / why / return / share），
  *     hours: 24, session: 43200 } → 带临时会话的短链（链接 24 小时、点开能看 12 小时）。
  *   服务端复用：同一页、同样档位、还剩 ≥ 12 小时的有效短链直接返回，不签新钥匙。
@@ -21,7 +21,7 @@
 /** 生成短链的接口（分享短链 Worker styrigx-share；CORS 只认三个子站） */
 export const SHARE_API = 'https://styrigx.com/api/share';
 export const SHARE_ORIGIN = 'https://styrigx.com';
-/** 站长一键分享的档位：链接 24 小时、点开后能看 12 小时（和账号页「新建分享短链」的默认一样） */
+/** 管理员一键分享的档位：链接 24 小时、点开后能看 12 小时（和账号页「新建分享短链」的默认一样） */
 export const QUICK = Object.freeze({ hours: 24, session: 12 * 3600 });
 /** 分享地址里去掉的查询参数（同服务端 STRIP_PARAMS） */
 export const STRIP_PARAMS = Object.freeze(['lock', 'why', 'return', 'share']);
@@ -62,10 +62,10 @@ export function linkName(t) {
   return Array.from(v).slice(0, NAME_MAX).join('');
 }
 
-/** <html data-sgx-role> → 'owner' | 'visitor'（没有 / 别的 = visitor；admin 也算站长） @param {Document} doc */
+/** <html data-sgx-role> → 'admin' | 'visitor'（没有 / 别的 = visitor） @param {Document} doc */
 export function roleOf(doc) {
   const r = (doc.documentElement.getAttribute('data-sgx-role') || '').toLowerCase();
-  return r === 'owner' || r === 'admin' ? 'owner' : 'visitor';
+  return r === 'admin' ? 'admin' : 'visitor';
 }
 
 /** 接口错误 → 文案键 @param {number} status @param {any} j */
@@ -77,7 +77,7 @@ export function errKey(status, j) {
 }
 
 /**
- * 请服务端生成（或复用）站长短链。
+ * 请服务端生成（或复用）管理员短链。
  * @param {{ url: string, title: string, fetch?: typeof fetch, api?: string }} p
  * @returns {Promise<{ok:true, url:string, reused:boolean}|{ok:false, key:string}>}
  */
@@ -210,7 +210,7 @@ export function mountShare(cfg) {
     if (busy) return 'busy';
     const url = c.url ? c.url() : pageUrl(location);
     const title = c.title ? c.title() : doc.title;
-    if (roleOf(doc) !== 'owner') return shareOrCopy({ title, url }, { nav: c.nav, doc, toast, t });
+    if (roleOf(doc) !== 'admin') return shareOrCopy({ title, url }, { nav: c.nav, doc, toast, t });
     setBusy(true);
     try {
       const r = await createLink({ url, title, fetch: c.fetch, api: c.api });

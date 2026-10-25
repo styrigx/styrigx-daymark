@@ -1,8 +1,8 @@
 // 顶栏右圆分享按钮（共享外壳 share.js，2026-10-24；留言板撤了，右边只剩这一个 52px 圆）：
-// - 站长（<html data-sgx-role="owner">，线上由网关注入；这里测试里补上）：POST https://styrigx.com/api/share（跨源带 cookie）
+// - 管理员（<html data-sgx-role="admin">，线上由网关注入；这里测试里补上）：POST https://styrigx.com/api/share（跨源带 cookie）
 //   { action:'create', reuse:true, name:页面标题, to:当前页（去 lock / why / return / share）, hours:24, session:43200 } → navigator.share 短链；
 //   系统分享被拒 / 没有 → 复制 + toast「已复制分享链接」；用户取消不复制；生成中再点不理；接口失败只 toast，不分享原地址。
-// - 访客：不调接口，直接分享当前页地址；同样的复制兜底。
+// - 访客：不调接口，直接分享当前页地址；同样的复制兜底。只有 admin 算管理员，别的角色值（含已不用的 owner）都当访客。
 // - 360 / 412 宽：右圆和左边九宫格圆一样大，长条不溢出，页面不横向滚动。
 import { test, expect } from '@playwright/test';
 
@@ -53,9 +53,9 @@ async function go(page, path, role) {
 const log = (page) => page.evaluate(() => window.__shareLog);
 
 test.describe('顶栏分享按钮', () => {
-  test('站长：生成带临时会话的短链（reuse、24 小时 / 12 小时、标题当名字、当前页去掉 lock/return）→ 系统分享短链', async ({ page }) => {
+  test('管理员：生成带临时会话的短链（reuse、24 小时 / 12 小时、标题当名字、当前页去掉 lock/return）→ 系统分享短链', async ({ page }) => {
     const calls = await setup(page);
-    await go(page, PAGE + '?lock=1&return=%2F&keep=1', 'owner');
+    await go(page, PAGE + '?lock=1&return=%2F&keep=1', 'admin');
     const url = await page.evaluate(() => location.origin + location.pathname + '?keep=1');
     const title = await page.title();
     await page.locator('[data-sgx-share]').click();
@@ -65,11 +65,11 @@ test.describe('顶栏分享按钮', () => {
     expect(calls[0].body).toEqual({ action: 'create', reuse: true, name: Array.from(title.trim()).slice(0, 24).join(''), to: url, hours: 24, session: 43200 });
   });
 
-  test('站长：生成中按钮 aria-busy、再点不理（只发一次请求）；完了恢复', async ({ page }) => {
+  test('管理员：生成中按钮 aria-busy、再点不理（只发一次请求）；完了恢复', async ({ page }) => {
     let release;
     const gate = new Promise((r) => { release = r; });
     const calls = await setup(page, { api: async () => { await gate; return [200, { ok: true, reused: true, link: { path: '/s/' + CODE } }]; } });
-    await go(page, PAGE, 'owner');
+    await go(page, PAGE, 'admin');
     const btn = page.locator('[data-sgx-share]');
     await btn.click();
     await expect(btn).toHaveAttribute('aria-busy', 'true');
@@ -82,9 +82,9 @@ test.describe('顶栏分享按钮', () => {
     expect(calls).toHaveLength(1);
   });
 
-  test('站长：系统分享被拒（NotAllowedError）→ 复制短链 + toast「已复制分享链接」', async ({ page }) => {
+  test('管理员：系统分享被拒（NotAllowedError）→ 复制短链 + toast「已复制分享链接」', async ({ page }) => {
     await setup(page, { share: 'NotAllowedError' });
-    await go(page, PAGE, 'owner');
+    await go(page, PAGE, 'admin');
     await page.locator('[data-sgx-share]').click();
     await expect(page.locator('.sgx-share-toast')).toHaveText('已复制分享链接');
     await expect(page.locator('.sgx-share-toast')).toHaveClass(/\bshow\b/);
@@ -92,26 +92,26 @@ test.describe('顶栏分享按钮', () => {
     expect((await log(page))[1][1]).toBe(SHORT);
   });
 
-  test('站长：没有 Web Share → 直接复制短链 + toast；用户取消（AbortError）→ 不复制不提示', async ({ page }) => {
+  test('管理员：没有 Web Share → 直接复制短链 + toast；用户取消（AbortError）→ 不复制不提示', async ({ page }) => {
     await setup(page, { share: 'none' });
-    await go(page, PAGE, 'owner');
+    await go(page, PAGE, 'admin');
     await page.locator('[data-sgx-share]').click();
     await expect(page.locator('.sgx-share-toast')).toHaveText('已复制分享链接');
     expect(await log(page)).toEqual([['copy', SHORT]]);
   });
 
-  test('站长：用户取消系统分享 → 不复制、不 toast', async ({ page }) => {
+  test('管理员：用户取消系统分享 → 不复制、不 toast', async ({ page }) => {
     await setup(page, { share: 'AbortError' });
-    await go(page, PAGE, 'owner');
+    await go(page, PAGE, 'admin');
     await page.locator('[data-sgx-share]').click();
     await expect.poll(() => log(page)).toEqual([['share', { title: await page.title(), url: SHORT }]]);
     await page.waitForTimeout(300);
     await expect(page.locator('.sgx-share-toast')).toHaveCount(0);
   });
 
-  test('站长：接口 401 → toast 提示重新登录，不分享也不复制原地址', async ({ page }) => {
+  test('管理员：接口 401 → toast 提示重新登录，不分享也不复制原地址', async ({ page }) => {
     await setup(page, { api: async () => [401, { ok: false }] });
-    await go(page, PAGE, 'owner');
+    await go(page, PAGE, 'admin');
     await page.locator('[data-sgx-share]').click();
     await expect(page.locator('.sgx-share-toast')).toContainText('重新登录');
     expect(await log(page)).toEqual([]);
@@ -137,10 +137,19 @@ test.describe('顶栏分享按钮', () => {
     expect(calls).toHaveLength(0);
   });
 
+  test('只有 admin 算管理员：data-sgx-role="owner" 当访客，不调接口', async ({ page }) => {
+    const calls = await setup(page);
+    await go(page, PAGE, 'owner');
+    const url = await page.evaluate(() => location.origin + location.pathname);
+    await page.locator('[data-sgx-share]').click();
+    await expect.poll(() => log(page)).toEqual([['share', { title: await page.title(), url }]]);
+    expect(calls).toHaveLength(0);
+  });
+
   for (const w of [360, 412]) {
-    test(`${w} 宽：右圆分享 52×52 贴右边，长条在两者之间不溢出，页面不横向滚动（站长 / 访客一样）`, async ({ page }) => {
+    test(`${w} 宽：右圆分享 52×52 贴右边，长条在两者之间不溢出，页面不横向滚动（管理员 / 访客一样）`, async ({ page }) => {
       await page.setViewportSize({ width: w, height: 800 });
-      for (const [home, role] of HOMES.flatMap((h) => [[h, 'owner'], [h, 'visitor']])) {
+      for (const [home, role] of HOMES.flatMap((h) => [[h, 'admin'], [h, 'visitor']])) {
         await go(page, home, role);
         const r = await page.evaluate(() => {
           const b = (s) => document.querySelector(s).getBoundingClientRect();

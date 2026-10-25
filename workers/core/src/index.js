@@ -6,10 +6,10 @@
  *
  * 请求顺序：
  *   1. GET /api/today：今日一句，主站首页 / 锁屏跨站调用的公开只读接口（带 CORS），不验会话；
- *      PUT /api/today（余响「设为今日」）和其他写接口一样先问网关，接口里再要 owner + 同源
- *   2. 其余 /api/*：先问网关会话（owner、visitor 都可）；无效 → 401 JSON（不 302，fetch 不跟跳转）
- *   3. 按路由表交给 src/api/<路径>.js；写操作自己再要求 owner + 同源
- * /api/session-check 由网关的更精确路由直接回答，到不了这里；万一到了，同样问网关。
+ *      PUT /api/today（余响「设为今日」）和其他写接口一样先问网关，接口里再要 admin + 同源
+ *   2. 其余 /api/*：先问网关会话（admin、visitor 都可）；无效 → 401 JSON（不 302，fetch 不跟跳转）
+ *   3. 按路由表交给 src/api/<路径>.js；写操作自己再要求 admin + 同源
+ * /api/lock-session-check 由网关的更精确路由直接回答，到不了这里；万一到了，同样问网关。
  * 不在路由表里的路径 → 404；方法不支持 → 405。
  *
  * 全站搜索索引（src/search-index.js）：写接口成功后用 ctx.waitUntil 重建 KV site:daymark；
@@ -82,7 +82,7 @@ export async function handle(request, env, ctx) {
   const path = url.pathname;
   if (!path.startsWith('/api/')) return json(404, { ok: false, error: 'not-found' });
 
-  if (routeKey(path) === '/api/session-check') {
+  if (routeKey(path) === '/api/lock-session-check') {
     const role = await verifySession(request, env);
     return role ? json(200, { ok: true }) : json(401, { ok: false });
   }

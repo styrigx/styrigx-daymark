@@ -75,7 +75,7 @@ test('再抽一句：不和现在这句重复；只有一句就还是它；空�
   assert.equal(D.pickRandom(QS, null, () => 0.9999).id, 'e');
 });
 
-test('设为今日：只主人、抽过、公开、不是今天这句才显示', () => {
+test('设为今日：只管理员、抽过、公开、不是今天这句才显示', () => {
   const pub = { id: 'x1', visibility: 'public' };
   const pri = { id: 'x2', visibility: 'private' };
   const today = { id: 't0' };

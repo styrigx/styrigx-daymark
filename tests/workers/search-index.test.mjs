@@ -44,9 +44,9 @@ function makeCtx() {
   const pending = [];
   return { pending, waitUntil(p) { pending.push(p); }, flush: () => Promise.all(pending) };
 }
-const auth = (role) => ({ async session() { return role ? { ok: true, role } : { ok: false }; } });
+const auth = (role) => ({ async lockSession() { return role ? { ok: true, role } : { ok: false }; } });
 const ORIGIN = 'https://daymark.styrigx.com';
-async function call(p, { role = 'owner', db, kv = makeKV(), ctx = makeCtx(), method = 'GET', body } = {}) {
+async function call(p, { role = 'admin', db, kv = makeKV(), ctx = makeCtx(), method = 'GET', body } = {}) {
   const headers = { Cookie: 'x', Origin: ORIGIN };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   const req = new Request(ORIGIN + p, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
@@ -156,7 +156,7 @@ test('重建在 waitUntil 里：响应不等它', async () => {
   const db = makeD1();
   const ctx = makeCtx();
   const kv = makeKV();
-  const env = { AUTH: auth('owner'), D1_QUOTES: db, KV_SEARCH_INDEX: kv };
+  const env = { AUTH: auth('admin'), D1_QUOTES: db, KV_SEARCH_INDEX: kv };
   const req = new Request(ORIGIN + '/api/quotes', { method: 'POST', headers: { Cookie: 'x', Origin: ORIGIN, 'Content-Type': 'application/json' }, body: JSON.stringify({ text: 'x' }) });
   const res = await worker.fetch(req, env, ctx);
   assert.equal(res.status, 201);
