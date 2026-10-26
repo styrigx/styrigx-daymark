@@ -67,7 +67,7 @@ npm run test:e2e    # 手机 E2E（先 hugo --minify -s web）
 
 ## 主站共享外壳
 
-色彩角色（13 套预设 × 亮 / 暗 + 自定义种子）、顶栏材质、导航抽屉、自定义主题色引擎、抽屉项都来自主站 styrigx-space 的 `web/shared/shell`，
+色彩角色（22 套预设 × 亮 / 暗 + 自定义种子）、顶栏材质、导航抽屉、自定义主题色引擎、抽屉项都来自主站 styrigx-space 的 `web/shared/shell`，
 副本在 `web/assets/css/input.css` 的 `@sgx-shell:begin / end` 段、`web/assets/js/sgx/shell/`、`web/assets/sgx-shell/`，来源和版本记在 `sgx-shell.lock.json`。
 **不要手改**：主站改了以后跑 `node scripts/sync-shell.mjs`，再 `npm run build:css`。CI 跑 `--check`，副本被手改或落后主站 main 都会红。
 
