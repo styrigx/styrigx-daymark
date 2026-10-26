@@ -71,6 +71,13 @@ npm run test:e2e    # 手机 E2E（先 hugo --minify -s web）
 副本在 `web/assets/css/input.css` 的 `@sgx-shell:begin / end` 段、`web/assets/js/sgx/shell/`、`web/assets/sgx-shell/`，来源和版本记在 `sgx-shell.lock.json`。
 **不要手改**：主站改了以后跑 `node scripts/sync-shell.mjs`，再 `npm run build:css`。CI 跑 `--check`，副本被手改或落后主站 main 都会红。
 
+### 外观 cookie（`sgx-ui`）
+
+深浅色、调色板、主题色读主站写的 `sgx-ui` cookie（本站只读，不写）。cookie 的属性、字段、版本、旧数据迁移和改格式的步骤见主站契约
+[docs/ui-cookie-contract.md](https://github.com/styrigx/styrigx-space/blob/main/docs/ui-cookie-contract.md)。
+本仓库读它的是 `web/assets/js/sgx/lib/ui-inherit.js`（`web/assets/js/sgx/ui-inherit-run.js` 打包后由 `web/layouts/_default/baseof.html` 内联，首帧前执行），
+单测 `tests/web/ui-inherit.test.mjs`。主站改了 cookie 格式，这里要跟着改。
+
 ## 许可
 
 [MIT](LICENSE)
