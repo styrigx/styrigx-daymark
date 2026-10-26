@@ -50,7 +50,7 @@ export function resolveAppearance(ui, local, prefersDark, seeds) {
     const mat = typeof ui.mat === 'number' ? ui.mat : 0;
     if (!okMode(local.mode) || mat >= (local.at || 0)) mode = uiMode;
   }
-  const pal = ui && typeof ui.pal === 'string' && Object.prototype.hasOwnProperty.call(seeds, ui.pal) ? ui.pal : 'lake';
+  const pal = ui && typeof ui.pal === 'string' && Object.prototype.hasOwnProperty.call(seeds, ui.pal) ? ui.pal : 'dustyblue';
   const fs = ui && (ui.fs === 'small' || ui.fs === 'large') ? ui.fs : 'standard';
   const rm = !!(ui && ui.rm === 1);
   const dark = mode === 'dark' || (mode === 'system' && prefersDark);
@@ -77,14 +77,14 @@ export function langTarget(ui, loc, pageLang) {
 }
 
 /**
- * 应用到 <html>：class="dark"、data-palette（lake 不写）、字号、减弱动效；自定义主题色见 applySeed。
+ * 应用到 <html>：class="dark"、data-palette（默认 dustyblue 不写，和主站 prefs.js DEFAULT_PALETTE、tokens.css 的 :root 一致）、字号、减弱动效；自定义主题色见 applySeed。
  * @param {HTMLElement} d
  * @param {{mode: string, dark: boolean, pal: string, fs: string, rm: boolean, seed?: string}} a
  */
 export function applyAppearance(d, a) {
   d.classList.toggle('dark', a.dark);
   d.setAttribute('data-theme-mode', a.mode);
-  if (a.pal && a.pal !== 'lake') d.setAttribute('data-palette', a.pal);
+  if (a.pal && a.pal !== 'dustyblue') d.setAttribute('data-palette', a.pal);
   else d.removeAttribute('data-palette');
   d.style.fontSize = a.fs === 'large' ? '112.5%' : a.fs === 'small' ? '87.5%' : '';
   d.setAttribute('data-font-size', a.fs);

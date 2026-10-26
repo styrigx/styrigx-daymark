@@ -3,7 +3,7 @@
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { readUiCookie, resolveAppearance, langTarget, applySeed } from '../../web/assets/js/sgx/lib/ui-inherit.js';
+import { readUiCookie, resolveAppearance, applyAppearance, langTarget, applySeed } from '../../web/assets/js/sgx/lib/ui-inherit.js';
 
 /* 预设种子来自主站共享外壳 palettes.json（和 ui-inherit-run.js 同一份） */
 const palettes = JSON.parse(readFileSync(new URL('../../web/assets/sgx-shell/palettes.json', import.meta.url), 'utf8'));
@@ -21,7 +21,7 @@ assert.equal(readUiCookie('a=1'), null);
 assert.equal(readUiCookie('sgx-ui=%%%'), null);
 
 /* 2. 没有 cookie：保持本站原行为 */
-assert.deepEqual(R(null, { mode: null, at: 0 }, true), { mode: 'system', dark: true, pal: 'lake', fs: 'standard', rm: false });
+assert.deepEqual(R(null, { mode: null, at: 0 }, true), { mode: 'system', dark: true, pal: 'dustyblue', fs: 'standard', rm: false });
 assert.equal(R(null, { mode: 'light', at: 5 }, true).dark, false);
 
 /* 3. 有 cookie、本站没改过：跟主站 */
@@ -36,18 +36,43 @@ assert.equal(R(got, { mode: 'light', at: 2000 }, false).pal, 'matcha');
 
 /* 5. 非法值兜底 */
 a = R({ mode: 'neon', pal: '<x>', fs: 'huge', rm: '1' }, { mode: null, at: 0 }, false);
-assert.deepEqual(a, { mode: 'system', dark: false, pal: 'lake', fs: 'standard', rm: false });
+assert.deepEqual(a, { mode: 'system', dark: false, pal: 'dustyblue', fs: 'standard', rm: false });
 
 /* 6. theme 是 mode 的别名；accent = 主站种子：等于 pal 的预设种子 → 不算自定义；其他 #rrggbb → seed；旧的色板 id / 非法值丢掉 */
 assert.equal(R({ theme: 'dark' }, { mode: null, at: 0 }, false).dark, true);
 assert.equal(R({ mode: 'light', theme: 'dark' }, { mode: null, at: 0 }, true).dark, false);
 assert.equal(R({ pal: 'rose', accent: SEEDS.rose }, { mode: null, at: 0 }, false).seed, undefined);
 assert.equal(R({ pal: 'rose', accent: '#AA3355' }, { mode: null, at: 0 }, false).seed, '#aa3355');
-assert.equal(R({ accent: SEEDS.lake.toUpperCase() }, { mode: null, at: 0 }, false).seed, undefined);
+assert.equal(R({ pal: 'lake', accent: SEEDS.lake.toUpperCase() }, { mode: null, at: 0 }, false).seed, undefined);
 assert.equal(R({ accent: 'rose' }, { mode: null, at: 0 }, false).seed, undefined);
 assert.equal(R({ accent: 'url(x)' }, { mode: null, at: 0 }, false).seed, undefined);
-assert.equal(R({ pal: 'nosuch' }, { mode: null, at: 0 }, false).pal, 'lake');
+assert.equal(R({ pal: 'nosuch' }, { mode: null, at: 0 }, false).pal, 'dustyblue');
 assert.equal(palettes.presets.length, 22);
+
+/* 6a. 默认色板 = 主站默认 dustyblue（palettes.json default；tokens.css 的 :root 就是它，不写 data-palette）；
+   选湖蓝 lake 的用户必须写 data-palette="lake"，不能被当成默认渲染成 dustyblue */
+assert.equal(palettes.default, 'dustyblue');
+const fakeRoot = () => {
+  const attrs = {};
+  const cls = new Set();
+  return {
+    attrs,
+    cls,
+    style: { fontSize: '' },
+    classList: { toggle: (c, on) => (on ? cls.add(c) : cls.delete(c)) },
+    setAttribute: (k, v) => (attrs[k] = v),
+    removeAttribute: (k) => delete attrs[k],
+  };
+};
+let el = fakeRoot();
+applyAppearance(el, R({ v: 2, mode: 'light', pal: 'lake', accent: SEEDS.lake }, { mode: null, at: 0 }, false));
+assert.equal(el.attrs['data-palette'], 'lake');
+el = fakeRoot();
+applyAppearance(el, R({ v: 2, mode: 'light', pal: 'dustyblue' }, { mode: null, at: 0 }, false));
+assert.equal(el.attrs['data-palette'], undefined);
+el = fakeRoot();
+applyAppearance(el, R(null, { mode: null, at: 0 }, false));
+assert.equal(el.attrs['data-palette'], undefined);
 
 /* 6b. applySeed：有缓存（版本 + 种子对）插 style；没缓存返回 false；没有自定义色删 style */
 const fakeDoc = () => {
