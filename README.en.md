@@ -44,8 +44,11 @@ Colour roles (13 presets × light/dark + custom seed), top-bar material, nav dra
 
 Theme, palette and accent come from the `sgx-ui` cookie written by the main site (read-only here). Attributes, fields, versions, legacy migration and how to change the format:
 [docs/ui-cookie-contract.md](https://github.com/styrigx/styrigx-space/blob/main/docs/ui-cookie-contract.md) in styrigx-space (Chinese).
-It is read by `web/assets/js/sgx/lib/ui-inherit.js` (bundled from `web/assets/js/sgx/ui-inherit-run.js` and inlined by `web/layouts/_default/baseof.html` before first paint);
-unit tests in `tests/web/ui-inherit.test.mjs`. If the main site changes the cookie format, update this reader too.
+It is read by the main site's shared-shell reader `web/assets/js/sgx/shell/ui-cookie-read.js` (synced verbatim by sync-shell, do not edit),
+inlined into `<head>` by `web/layouts/_default/baseof.html`; `web/assets/js/sgx/ui-inherit-run.js` right after it calls `SgxUI.apply` before first paint.
+Language follow lives in `web/assets/js/sgx/lib/ui-inherit.js` (the main-site writer does not write `lang` yet; it takes effect once it does).
+The contract fixtures `tests/fixtures/ui-cookie-contract.json` (also synced) run case by case in `tests/web/ui-cookie-contract.test.mjs` and `tests/web/e2e/ui-cookie.spec.js`.
+If the main site changes the cookie format, run `node scripts/sync-shell.mjs` to sync the reader and fixtures; no code change needed here.
 
 ## Seed data
 

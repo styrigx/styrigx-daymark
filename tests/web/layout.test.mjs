@@ -89,13 +89,13 @@ test('robots.txt 用 static 里的 Disallow: /（Hugo 内置 robots 模板关掉
   assert.match(read('web/static/robots.txt'), /^User-agent: \*\nDisallow: \/$/m);
 });
 
-test('head 内联脚本和自定义色引擎不打包整份 palettes.json，只经 js.Build params 拿 {v, seeds}', () => {
+test('head 内联脚本和自定义色引擎不打包整份 palettes.json（预设表在共享读端里，引擎版本用读端的 SCHEME_VER）', () => {
   for (const f of ['web/assets/js/sgx/ui-inherit-run.js', 'web/assets/js/sgx/shell-accent.js']) {
     const src = read(f);
     assert.doesNotMatch(src, /^import .*palettes\.json/m, f);
-    assert.match(src, /^import \* as params from '@params';$/m, f);
+    assert.doesNotMatch(src, /@params/, f);
   }
-  assert.match(base, /resources\.Get "sgx-shell\/palettes\.json" \| transform\.Unmarshal/);
-  assert.match(base, /\$shellParams := dict "v" \$pal\.schemeVersion "seeds" \$seeds/);
-  assert.match(base, /js\/sgx\/ui-inherit-run\.js" \| js\.Build \(dict [^)]*"params" \$shellParams\)/);
+  assert.doesNotMatch(base, /sgx-shell\/palettes\.json/);
+  assert.match(base, /<script>\{\{ \(resources\.Get "js\/sgx\/shell\/ui-cookie-read\.js" \| minify\)\.Content \| safeJS \}\}<\/script>/);
+  assert.match(base, /js\/sgx\/ui-inherit-run\.js" \| js\.Build \(dict "format" "iife" "minify" true "target" "es2018"\)\)/);
 });

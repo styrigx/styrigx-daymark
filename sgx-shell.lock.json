@@ -24,6 +24,8 @@
     "web/assets/js/sgx/shell/search.js": "a065ace177d976ce642d8d6a22450f5f15a2efd3202d6144d0e743b860a1724a",
     "web/assets/js/sgx/shell/share.js": "36bc004012586c0aaaaac84b29e45a9057738c344f768f1725a4960030d68426",
     "web/assets/sgx-shell/nav.json": "1465967a1f517e1bf682874d359b41641368931689202d129db0876ee0f2e458",
-    "web/assets/sgx-shell/palettes.json": "8acce76979dfeec50d305c8f84e59a83c56b7bbbfa4b45c2f85d631f90bc3c08"
+    "web/assets/sgx-shell/palettes.json": "8acce76979dfeec50d305c8f84e59a83c56b7bbbfa4b45c2f85d631f90bc3c08",
+    "web/assets/js/sgx/shell/ui-cookie-read.js": "fb7a989c48d715da25ebdadf40bb5305a53d52b38d2f3896e75f21c140b1024a",
+    "tests/fixtures/ui-cookie-contract.json": "677ab3413abcad31e6a170d4c77e999d6cb7c22fe2cbc751332e65b66f7975a0"
   }
 }

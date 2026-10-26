@@ -1,13 +1,7 @@
 <!DOCTYPE html>
 {{ $isEn := or (eq .Lang "en") (hasPrefix .RelPermalink "/en/") }}
-{{/* 共享外壳 palettes.json 只取脚本要用的：引擎版本 v + 预设种子 seeds（id → #rrggbb），经 js.Build params 传给脚本（@params）。
-   整份 json 带 22 套 × 亮 / 暗全部 token，不能打进脚本（2026-10 审计 D1）。 */}}
-{{ $pal := resources.Get "sgx-shell/palettes.json" | transform.Unmarshal }}
-{{ $seeds := dict }}
-{{ range $pal.presets }}{{ $seeds = merge $seeds (dict .id .seed) }}{{ end }}
-{{ $shellParams := dict "v" $pal.schemeVersion "seeds" $seeds }}
-{{/* 自定义主题色引擎（共享外壳 palette-scheme.js）：只在 cookie 是自定义色且本站还没缓存时，由 ui-inherit-run.js 按需加载 */}}
-{{ $shellAccent := resources.Get "js/sgx/shell-accent.js" | js.Build (dict "format" "iife" "minify" true "target" "es2018" "params" (dict "v" $pal.schemeVersion)) | fingerprint }}
+{{/* 自定义主题色引擎（共享外壳 palette-scheme.js）：只在 cookie 是自定义色且本站还没缓存时，由共享读端 SgxUI.apply 的 onMiss 按需加载 */}}
+{{ $shellAccent := resources.Get "js/sgx/shell-accent.js" | js.Build (dict "format" "iife" "minify" true "target" "es2018") | fingerprint }}
 <html lang="{{ if $isEn }}en{{ else }}zh{{ end }}" class="scroll-smooth" data-sgx-accent-js="{{ $shellAccent.RelPermalink }}">
 <head>
 <meta charset="utf-8">
@@ -27,7 +21,9 @@
 </style>
 {{/* 外观 + 语言预读（渲染前）——继承主站 sgx-ui cookie 的深浅色、调色板、强调色、字体大小、减弱动效和语言；
      没有 cookie 时跟系统（日刻没有自己的开关） */}}
-<script>{{ (resources.Get "js/sgx/ui-inherit-run.js" | js.Build (dict "format" "iife" "minify" true "target" "es2018" "params" $shellParams)).Content | safeJS }}</script>
+{{/* 共享外壳读端 ui-cookie-read.js（主站唯一来源，sync-shell 同步，勿手改）原样内联，挂 window.SgxUI；紧跟 ui-inherit-run.js 调 SgxUI.apply */}}
+<script>{{ (resources.Get "js/sgx/shell/ui-cookie-read.js" | minify).Content | safeJS }}</script>
+<script>{{ (resources.Get "js/sgx/ui-inherit-run.js" | js.Build (dict "format" "iife" "minify" true "target" "es2018")).Content | safeJS }}</script>
 <script>
 /* 布局模式：同主站 baseof __layoutMode() 的自动规则（宽 ≥ 840、高 ≥ 500 且横屏 = DeX，否则 Mobile），
    外壳框最宽（Mobile 640 / DeX 1440，input.css）跟着它，顶栏两侧圆和主站同一位置。日刻没有自己的布局开关。 */

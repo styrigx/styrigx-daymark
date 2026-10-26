@@ -400,20 +400,22 @@ test('主题跟主站 sgx-ui cookie：pal 换预设；accent 是自定义种子 
   const set = (ui) => context.addCookies([{ name: 'sgx-ui', value: enc(ui), url: baseURL }]);
   const ind = () => page.evaluate(() => getComputedStyle(document.querySelector('.sgx-seg-ind')).backgroundColor);
   await page.goto('/');
-  const lake = await ind();
+  const base = await ind(); /* 没有 cookie：默认 dustyblue */
   const matchaSeed = JSON.parse(require('node:fs').readFileSync(require('node:path').join(__dirname, '..', '..', '..', 'web/assets/sgx-shell/palettes.json'), 'utf8')).presets.find((p) => p.id === 'matcha').seed;
   await set({ v: 2, mode: 'dark', pal: 'matcha', accent: matchaSeed });
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-palette', 'matcha');
   await expect(page.locator('html')).toHaveClass(/dark/);
   await expect(page.locator('#sgx-accent-roles')).toHaveCount(0);
-  expect(await ind()).not.toBe(lake);
+  expect(await ind()).not.toBe(base);
   await set({ v: 2, mode: 'light', pal: 'lake', accent: '#ff8800' });
   await page.reload();
-  await expect(page.locator('html')).toHaveAttribute('data-sgx-seed', '#ff8800');
+  /* 自定义色的种子内联在 --sgx-seed（共享读端；不再用 data-sgx-seed） */
+  expect(await page.evaluate(() => document.documentElement.style.getPropertyValue('--sgx-seed'))).toBe('#ff8800');
+  await expect(page.locator('html')).not.toHaveAttribute('data-sgx-seed', /./);
   await expect(page.locator('#sgx-accent-roles')).toHaveCount(1);
   const custom = await ind();
-  expect(custom).not.toBe(lake);
+  expect(custom).not.toBe(base);
   /* 第二次：缓存命中，不再加载引擎脚本 */
   await page.reload();
   await expect(page.locator('#sgx-accent-roles')).toHaveCount(1);
