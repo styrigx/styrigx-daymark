@@ -24,7 +24,7 @@ styrigx-daymark/
 | `layouts/index.html` | 首页三块面板（余响 · 拾录 · 百味）、记一句弹层、新建专题、确认框 |
 | `assets/js/daymark.js` | 首页逻辑（页签 / hash 路由、余响、拾录、百味、记一句）；纯函数导出给 `tests/web/daymark.test.mjs` |
 | `assets/js/topbar.js` | 导航抽屉开关 |
-| `assets/js/sgx/` | 外观和语言继承主站（`sgx-ui` cookie：mode / pal / accent 种子 / fs / rm / lang）；`shell/palette-scheme.js` 是主站共享外壳的自定义主题色引擎（`shell-accent.js` 按需加载） |
+| `assets/js/sgx/` | 外观和语言继承主站（`sgx-ui` cookie）：`shell/ui-cookie-read.js` 是主站共享外壳的 cookie 读端（baseof 内联，`ui-inherit-run.js` 调 `SgxUI.apply`），`lib/ui-inherit.js` 管语言跟随；`shell/palette-scheme.js` 是自定义主题色引擎（`shell-accent.js` 按需加载） |
 | `assets/sgx-shell/` | 主站共享外壳的抽屉项 + 图标（`nav.json`）、预设种子（`palettes.json`），`scripts/sync-shell.mjs` 同步，勿手改 |
 | `assets/css/input.css` | 样式；`@sgx-shell:begin … end` 之间是主站共享外壳（色彩角色 + 顶栏材质 + 导航抽屉，`scripts/sync-shell.mjs` 写入，勿手改），后面的 `--m-*` 只是角色的别名 |
 | `assets/js/sgx-lock-sync.js` | 切回前台复查会话，401 → 刷新去主站锁屏 |

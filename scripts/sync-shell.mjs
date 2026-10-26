@@ -33,9 +33,13 @@ const SITE = {
     { path: 'web/assets/js/sgx/shell/search.js', kind: 'file', parts: ['search.js'] },
     /* 顶栏右胶囊的分享按钮（管理员：生成带临时会话的短链再系统分享；访客：分享当前页；js/sgx/share-host.js 打包） */
     { path: 'web/assets/js/sgx/shell/share.js', kind: 'file', parts: ['share.js'] },
-    /* 导航抽屉项 + 图标（baseof.html）、预设种子 + 引擎版本（ui-inherit-run.js） */
+    /* 导航抽屉项 + 图标（baseof.html）、预设种子 + 引擎版本（tests/web/ui-inherit.test.mjs 核对读端预设表） */
     { path: 'web/assets/sgx-shell/nav.json', kind: 'json', parts: ['nav.json'] },
     { path: 'web/assets/sgx-shell/palettes.json', kind: 'json', parts: ['palettes.json'] },
+    /* 外观 cookie（sgx-ui）读端：经典脚本 ES5，baseof.html 原样内联进 <head>（挂 window.SgxUI），ui-inherit-run.js 调 SgxUI.apply */
+    { path: 'web/assets/js/sgx/shell/ui-cookie-read.js', kind: 'file', parts: ['ui-cookie-read.js'] },
+    /* 契约夹具（主站写端真实产出的 cookie + 读端期望）：tests/web/ui-cookie-contract.test.mjs 逐个跑 */
+    { path: 'tests/fixtures/ui-cookie-contract.json', kind: 'json', parts: ['ui-cookie-contract.json'] },
   ],
 };
 /* ---- /__SITE_CONFIG__ ---- */

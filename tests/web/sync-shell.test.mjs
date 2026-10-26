@@ -35,6 +35,8 @@ test('renderTargets：标记段带来源和版本，内容按 manifest 拼接', 
     'share.js': 'export function mountShare() {}\n',
     'nav.json': '{"items":[]}\n',
     'palettes.json': '{"presets":[]}\n',
+    'ui-cookie-read.js': '(function (g) { g.SgxUI = {}; })(this);\n',
+    'ui-cookie-contract.json': '{"cases":[]}\n',
   };
   const { out } = renderTargets({ manifest: { version: 'abc', files: {} }, files }, 'main', () => `a\n${BEGIN} x */\nold\n${END}\nb\n`);
   for (const [p, text] of Object.entries(out)) {

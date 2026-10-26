@@ -67,7 +67,7 @@ npm run test:e2e    # 手机 E2E（先 hugo --minify -s web）
 
 ## 主站共享外壳
 
-色彩角色（13 套预设 × 亮 / 暗 + 自定义种子）、顶栏材质、导航抽屉、自定义主题色引擎、抽屉项都来自主站 styrigx-space 的 `web/shared/shell`，
+色彩角色（22 套预设 × 亮 / 暗 + 自定义种子）、顶栏材质、导航抽屉、自定义主题色引擎、抽屉项都来自主站 styrigx-space 的 `web/shared/shell`，
 副本在 `web/assets/css/input.css` 的 `@sgx-shell:begin / end` 段、`web/assets/js/sgx/shell/`、`web/assets/sgx-shell/`，来源和版本记在 `sgx-shell.lock.json`。
 **不要手改**：主站改了以后跑 `node scripts/sync-shell.mjs`，再 `npm run build:css`。CI 跑 `--check`，副本被手改或落后主站 main 都会红。
 
@@ -75,8 +75,11 @@ npm run test:e2e    # 手机 E2E（先 hugo --minify -s web）
 
 深浅色、调色板、主题色读主站写的 `sgx-ui` cookie（本站只读，不写）。cookie 的属性、字段、版本、旧数据迁移和改格式的步骤见主站契约
 [docs/ui-cookie-contract.md](https://github.com/styrigx/styrigx-space/blob/main/docs/ui-cookie-contract.md)。
-本仓库读它的是 `web/assets/js/sgx/lib/ui-inherit.js`（`web/assets/js/sgx/ui-inherit-run.js` 打包后由 `web/layouts/_default/baseof.html` 内联，首帧前执行），
-单测 `tests/web/ui-inherit.test.mjs`。主站改了 cookie 格式，这里要跟着改。
+本仓库读它的是主站共享外壳的读端 `web/assets/js/sgx/shell/ui-cookie-read.js`（sync-shell 原样同步，勿手改），
+由 `web/layouts/_default/baseof.html` 原样内联进 `<head>`，紧跟的 `web/assets/js/sgx/ui-inherit-run.js` 调 `SgxUI.apply` 首帧前落外观；
+语言跟随在 `web/assets/js/sgx/lib/ui-inherit.js`（主站写端还不写 `lang`，加上后自动生效）。
+契约夹具 `tests/fixtures/ui-cookie-contract.json`（同样由 sync-shell 同步）由 `tests/web/ui-cookie-contract.test.mjs` 和 `tests/web/e2e/ui-cookie.spec.js` 逐个跑；
+主站改了 cookie 格式，跑 `node scripts/sync-shell.mjs` 同步读端和夹具即可，本仓库不用改代码。
 
 ## 许可
 
