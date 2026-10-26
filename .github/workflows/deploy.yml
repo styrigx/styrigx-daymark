@@ -9,12 +9,30 @@ on:
       - main
   workflow_dispatch:
 
+# 同一分支推新提交时取消旧的 PR CI；main 的部署永不取消（排队按顺序跑，D1 迁移 / core / Pages 不会交错）
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# GITHUB_TOKEN 默认只读；本工作流不推代码、不发评论、不建 release
+permissions:
+  contents: read
+
+env:
+  # 所有 wrangler（npx 和 wrangler-action）用同一个固定版本，和主站 styrigx-space 一致；升级时只改这里
+  WRANGLER_VERSION: '4.152.0'
+
+# 构建环境（Hugo 版本与 extended、Node + npm ci、Playwright 浏览器缓存）用主站 styrigx-space 的共享 composite action，
+# 按固定 tag 引用（不跟主站 main）；Renovate 在 styrigx-space 发新 tag 后开 PR 升级（见主站 .github/actions/README.md）。
+# 部署 job 不用共享 action：密钥和 environment 只出现在本文件里。
 jobs:
+  # 作业名保持 build-and-deploy 不变（规则集 protect-main 的必需检查按这个名字认）
   build-and-deploy:
-    runs-on: ubuntu-latest
+    # 固定 runner 大版本：ubuntu-latest 换大版本时系统库 / 字体会变
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
       - name: Assert zero-key layout
         # 本仓库不持任何钥匙：页面会话在主站鉴权网关验，接口（workers/core）经服务绑定问网关。
@@ -22,30 +40,26 @@ jobs:
         run: |
           set -u
           if [ -e functions ] || [ -e web/functions ]; then echo "FAIL: Pages Functions must not exist"; exit 1; fi
-          if grep -rn -E "SGX_[A-Z]+_(PUBLIC|PRIVATE|KEY)|SGX_ED25519_|SGX_STEPUP_|SGX_ROOT_KEY" \
+          # SGX_[A-Z0-9_]*(…)：连 SGX_PW_PEPPER、SGX_CHAT_API_KEY、SGX_ROOT_KEY 这类名字一起拦
+          if grep -rn -E "SGX_[A-Z0-9_]*(PUBLIC|PRIVATE|KEY|PEPPER)|SGX_ED25519_|SGX_STEPUP_" \
                --include="*.js" --include="*.mjs" --include="*.toml" --include="*.html" web/ workers/ scripts/ 2>/dev/null; then
             echo "FAIL: daymark must not hold keys"; exit 1
           fi
           echo "OK: zero-key layout."
 
-      - name: Setup Hugo
-        uses: peaceiris/actions-hugo@v3
-        with:
-          hugo-version: '0.162.0'
-          extended: true
+      - name: Setup Hugo (styrigx-space shared action; version + extended defined there)
+        uses: styrigx/styrigx-space/.github/actions/setup-hugo@v1.0.0
 
-      - name: Setup Node
+      - name: Setup Node + install dependencies (styrigx-space shared action, npm cache)
         # Node 22：测试里用 node:sqlite 真跑 D1 的 SQL
-        uses: actions/setup-node@v4
+        uses: styrigx/styrigx-space/.github/actions/setup-node-deps@v1.0.0
         with:
           node-version: '22'
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Shared shell in sync with main site (scripts/sync-shell.mjs --check)
+      - name: Shared shell copy matches the pinned main-site commit (scripts/sync-shell.mjs --check)
         # 色彩角色 / 顶栏材质 / 导航抽屉 / 自定义主题色引擎来自主站 styrigx-space web/shared/shell，主站是唯一来源：
-        # 副本被手改，或主站 main 上的外壳版本变了没同步 → 红（修法：node scripts/sync-shell.mjs）
+        # 副本被手改，或和 sgx-shell.lock.json 锁定的主站提交对不上 → 红。主站 main 上外壳更新了只打 notice，不变红；
+        # 升级外壳：node scripts/sync-shell.mjs（锁定到主站 main 当时的提交）后提交
         run: node scripts/sync-shell.mjs --check
 
       - name: Build CSS
@@ -56,13 +70,13 @@ jobs:
 
       - name: core bundle check (dry-run)
         working-directory: workers/core
-        run: npx --yes wrangler@4 deploy --dry-run --outdir "$RUNNER_TEMP/core-dist"
+        run: npx --yes "wrangler@$WRANGLER_VERSION" deploy --dry-run --outdir "$RUNNER_TEMP/core-dist"
 
       - name: Build site
         run: hugo --minify -s web
 
-      - name: Install Playwright Chromium
-        run: npx playwright install chromium --with-deps
+      - name: Playwright Chromium (styrigx-space shared action, browser cache keyed by lockfile version)
+        uses: styrigx/styrigx-space/.github/actions/setup-playwright@v1.0.0
 
       - name: Run phone E2E
         run: npm run test:e2e
@@ -81,7 +95,7 @@ jobs:
       - name: Upload site build
         # 部署 job 直接用这份产物，不再重建
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: site-public
           path: web/public
@@ -89,17 +103,18 @@ jobs:
 
   # 只在 main 推送时部署，测试 job 不碰任何钥匙。命名一一对应（同 auth gateway）：
   #   Cloudflare token 名 = GitHub 环境名 = 环境密钥名（大写、横线换下划线）
-  #   styrigx-daymark-core-deploy  -> STYRIGX_DAYMARK_CORE_DEPLOY   D1 + Workers Scripts + Workers Routes
+  #   styrigx-daymark-core-deploy  -> STYRIGX_DAYMARK_CORE_DEPLOY   core Worker 的 D1 迁移 + 部署（环境密钥，环境只允许 main）
   #   styrigx-daymark-pages-deploy -> STYRIGX_DAYMARK_PAGES_DEPLOY  Cloudflare Pages（仓库级密钥，同 space：只能推静态页面，不碰数据）
+  # 各 token 的具体权限以 Cloudflare 上 2026-10-26 按代码收紧后的为准，不在这里重复。
   # 只有 core 环境限 main；CLOUDFLARE_ACCOUNT_ID 不是钥匙，留在仓库级。
   deploy-core:
     needs: build-and-deploy
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: STYRIGX_DAYMARK_CORE_DEPLOY
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
       - name: Gate check - gateway must already guard daymark pages and expose AuthVerifier
         # Pages 没有验票代码、core 要经服务绑定问网关：网关必须先登记 daymark.styrigx.com。
@@ -123,22 +138,22 @@ jobs:
           [ "$code" = "401" ] && [ "$rt" = "worker" ] || { echo "::error::gateway does not answer /api/lock-session-check yet (no AuthVerifier); deploy the main-site gateway first"; exit 1; }
 
       - name: Apply D1 migrations
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
         with:
           apiToken: ${{ secrets.STYRIGX_DAYMARK_CORE_DEPLOY }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: workers/core
-          wranglerVersion: '4'
+          wranglerVersion: ${{ env.WRANGLER_VERSION }}
           command: d1 migrations apply styrigx-daymark-core --remote
 
       - name: Deploy styrigx-daymark-core
         # 先部署接口 Worker（路由 daymark.styrigx.com/api/* 优先于 Pages），再部署 Pages。
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
         with:
           apiToken: ${{ secrets.STYRIGX_DAYMARK_CORE_DEPLOY }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: workers/core
-          wranglerVersion: '4'
+          wranglerVersion: ${{ env.WRANGLER_VERSION }}
           command: deploy
 
       - name: Smoke test core (must be served by the Worker)
@@ -165,35 +180,25 @@ jobs:
   deploy-pages:
     needs: deploy-core
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         # web/wrangler.toml 要跟着部署
-        uses: actions/checkout@v4
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
       - name: Download site build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: site-public
           path: web/public
 
-      - name: Ensure Pages project exists
-        continue-on-error: true
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.STYRIGX_DAYMARK_PAGES_DEPLOY }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: web
-          wranglerVersion: '4'
-          command: pages project create styrigx-daymark --production-branch=main
-
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
         with:
           apiToken: ${{ secrets.STYRIGX_DAYMARK_PAGES_DEPLOY }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: web
-          wranglerVersion: '4'
+          wranglerVersion: ${{ env.WRANGLER_VERSION }}
           command: pages deploy public --project-name=styrigx-daymark --commit-dirty=true
 
       - name: Smoke test Pages (pages behind the gateway, static files direct, pages.dev not open)

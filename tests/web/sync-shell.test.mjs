@@ -44,3 +44,7 @@ test('renderTargets：标记段带来源和版本，内容按 manifest 拼接', 
     assert.doesNotMatch(text, /\nold\n/, p);
   }
 });
+
+test('lock 锁定到主站的完整提交 SHA（--check 只和这个提交比，不跟主站 main 走）', () => {
+  assert.match(lock.ref, /^[0-9a-f]{40}$/, 'sgx-shell.lock.json 的 ref 要是 40 位提交 SHA：运行 node scripts/sync-shell.mjs 重新同步');
+});
