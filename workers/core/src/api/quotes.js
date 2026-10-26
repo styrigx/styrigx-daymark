@@ -10,7 +10,7 @@
 // 错误：400 bad-json / bad-body / bad-text / bad-visibility / bad-source-type / bad-collections / nothing / bad-id；
 //       403 origin / role；404 not-found；409 limit；413 too-large
 import { json, err, methodNotAllowed } from './_lib.js';
-import { verifySession } from './_auth.js';
+import { sessionRole } from './_auth.js';
 import { readBody, guardWrite, idParam } from './_write.js';
 import { ensureSchema, parseQuote, rowToQuote, newId, LIMITS, QUOTE_COLS } from './_quotes.js';
 
@@ -51,7 +51,7 @@ async function adminQuote(db, id) {
 
 export async function onRequestGet(context) {
   const { request, env } = context;
-  const role = await verifySession(request, env);
+  const role = await sessionRole(context);
   if (!role) return err('unauthorized', 401);
   await ensureSchema(env.D1_QUOTES);
   const admin = role === 'admin';
@@ -126,9 +126,12 @@ export async function onRequestDelete(context) {
   const id = idParam(request);
   if (!id) return err('bad-id', 400);
   await ensureSchema(env.D1_QUOTES);
-  const res = await env.D1_QUOTES.prepare('DELETE FROM quotes WHERE id = ?1').bind(id).run();
-  if (!res.meta || !res.meta.changes) return err('not-found', 404);
-  await env.D1_QUOTES.prepare('DELETE FROM collection_quotes WHERE quote_id = ?1').bind(id).run();
+  /* 句子和它的专题归属在同一个 batch（一个事务）里删，不会留下孤儿归属行 */
+  const [res] = await env.D1_QUOTES.batch([
+    env.D1_QUOTES.prepare('DELETE FROM quotes WHERE id = ?1').bind(id),
+    env.D1_QUOTES.prepare('DELETE FROM collection_quotes WHERE quote_id = ?1').bind(id),
+  ]);
+  if (!res || !res.meta || !res.meta.changes) return err('not-found', 404);
   return json({ ok: true });
 }
 

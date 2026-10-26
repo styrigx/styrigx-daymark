@@ -99,4 +99,28 @@ await test('网络错误 → 透出异常，不 reload', async () => {
   assert.equal(reloaded, 0);
 });
 
+console.log('sgx-lock-sync mount:');
+await test('pageshow 只在 bfcache 恢复（persisted）时查；切回前台照常查', async () => {
+  const listeners = {};
+  let fetches = 0;
+  const box = {
+    console,
+    document: { hidden: false, addEventListener: (t, f) => { listeners['doc:' + t] = f; } },
+    window: { addEventListener: (t, f) => { listeners['win:' + t] = f; } },
+    fetch: async () => { fetches++; return { status: 200 }; },
+    location: { reload() {} },
+  };
+  vm.createContext(box);
+  vm.runInContext(sgxSrc, box); /* 没有 module → 浏览器分支，自动 mount */
+  listeners['win:pageshow']({ persisted: false });
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(fetches, 0);
+  listeners['win:pageshow']({ persisted: true });
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(fetches, 1);
+  listeners['doc:visibilitychange']();
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(fetches, 2);
+});
+
 console.log(`\n${passed} passed`);

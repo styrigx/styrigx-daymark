@@ -12,7 +12,8 @@ languages:
     weight: 2
 theme: []
 
-enableRobotsTXT: true
+# robots.txt 用 web/static/robots.txt（Disallow: /）。设 true 时 Hugo 内置模板会生成只有 User-agent: * 的文件盖掉它（等于全部允许）
+enableRobotsTXT: false
 enableEmoji: true
 
 markup:
