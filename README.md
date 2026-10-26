@@ -8,7 +8,7 @@
 
 [在线访问 daymark.styrigx.com](https://daymark.styrigx.com) · [主站 styrigx.com](https://styrigx.com) · [博客 blog.styrigx.com](https://blog.styrigx.com) · [GitHub @styrigx](https://github.com/styrigx)
 
-![Hugo](https://img.shields.io/badge/Hugo-0.162.0-2563eb?style=flat-square&logo=hugo)
+![Hugo](https://img.shields.io/badge/dynamic/yaml?url=https://raw.githubusercontent.com/styrigx/styrigx-space/main/.github/actions/setup-hugo/action.yml&query=%24..HUGO_VERSION&label=Hugo&style=flat-square&color=2563eb&logo=hugo)
 ![Version](https://img.shields.io/badge/dynamic/yaml?url=https://raw.githubusercontent.com/styrigx/styrigx-daymark/main/web/hugo.yaml&query=%24.params.version&label=Daymark&style=flat-square&color=2563eb)
 ![Deploy](https://img.shields.io/github/actions/workflow/status/styrigx/styrigx-daymark/deploy.yml?style=flat-square&label=Deploy&color=2563eb)
 ![License](https://img.shields.io/badge/License-MIT-2563eb?style=flat-square)
