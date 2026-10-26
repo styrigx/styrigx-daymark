@@ -10,7 +10,7 @@
 // 写操作成功返回 {ok:true, collection}（删除返回 {ok:true}）。
 // 错误：400 bad-json / bad-body / bad-name / bad-sort / bad-quote-ids / nothing / bad-id；403 origin / role；404 not-found；409 limit；413 too-large
 import { json, err, methodNotAllowed } from './_lib.js';
-import { verifySession } from './_auth.js';
+import { sessionRole } from './_auth.js';
 import { readBody, guardWrite, idParam } from './_write.js';
 import { ensureSchema, parseCollection, newId, LIMITS } from './_quotes.js';
 
@@ -41,7 +41,7 @@ async function one(db, id) {
 
 export async function onRequestGet(context) {
   const { request, env } = context;
-  const role = await verifySession(request, env);
+  const role = await sessionRole(context);
   if (!role) return err('unauthorized', 401);
   await ensureSchema(env.D1_QUOTES);
   const admin = role === 'admin';

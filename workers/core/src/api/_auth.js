@@ -27,9 +27,20 @@ export async function verifySession(request, env) {
   return null;
 }
 
+/**
+ * 本次请求的会话角色：index.js 已经问过网关（结果放在 context.data.role）就直接用，不再问第二次；
+ * 没有（单测直接调 handler 等）才自己问。返回值同 verifySession。
+ * @param {{request: Request, env: Record<string, any>, data?: Record<string, any>}} context
+ */
+export async function sessionRole(context) {
+  const r = context && context.data ? context.data.role : null;
+  if (r === 'admin' || r === 'visitor') return r;
+  return verifySession(context.request, context.env);
+}
+
 /** 要求 admin：未登录 401；visitor 403 */
 export async function requireAdmin(context) {
-  const role = await verifySession(context.request, context.env);
+  const role = await sessionRole(context);
   if (role === 'admin') return { response: null };
   if (role === 'visitor') return { response: err('role', 403) };
   return { response: err('unauthorized', 401) };

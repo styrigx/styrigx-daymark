@@ -72,8 +72,8 @@ function mount(){
   G.document.addEventListener('visibilitychange', function(){
     if (!G.document.hidden) checkSession();
   });
-  /* pageshow 覆盖 bfcache 恢复（event.persisted）与普通加载 */
-  G.window.addEventListener('pageshow', function(){ checkSession(); });
+  /* pageshow 只管 bfcache 恢复（event.persisted）：普通加载时页面刚经过网关验过会话，再查一次是多余的 KV 读 */
+  G.window.addEventListener('pageshow', function(e){ if (e && e.persisted) checkSession(); });
 }
 
 var api = {

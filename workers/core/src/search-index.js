@@ -14,7 +14,9 @@
  *
  * 什么时候写：
  *   - 每次写接口成功（增 / 改 / 删 / 以后的导入）后由 index.js 用 ctx.waitUntil 重建
- *   - Cron 每小时兜底重建一次（wrangler.toml [triggers]），首次部署后也靠它填上
+ *   - Cron 每小时兜底重建一次（wrangler.toml [triggers]），首次部署后也靠它填上。
+ *     兜底时先读 KV 里那份的 metadata.sha（内容指纹，不含 generated 时间），一样就不写：一次读换一次写，
+ *     省下账号共享的 KV 写额度（免费版每天 1000 次）。写接口触发的重建照常写。
  * 出错只打日志，不抛给调用方，绝不影响接口本身。
  */
 import { ensureSchema, QUOTE_COLS, rowToQuote } from './api/_quotes.js';
@@ -92,11 +94,21 @@ export async function buildIndex(db, now = Date.now()) {
   return { site: SITE, generated: new Date(now).toISOString(), items };
 }
 
+/** 索引内容指纹：sha256(JSON {site, items})，不含 generated（时间每次都变） */
+export async function contentSha(value) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify({ site: value.site, items: value.items })));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 /**
- * 重建并写入 KV。永不抛错：成功 {ok:true, count}，失败 {ok:false, error}（只打日志，不带句子内容）。
+ * 重建并写入 KV（metadata 带内容指纹 sha）。永不抛错：
+ * 成功 {ok:true, count}，内容没变跳过写 {ok:true, count, unchanged:true}，失败 {ok:false, error}（只打日志，不带句子内容）。
  * @param {Record<string, any>} env
+ * @param {number} [now]
+ * @param {{skipUnchanged?: boolean}} [opts] skipUnchanged：KV 里那份的 metadata.sha 和这次一样就不写（Cron 兜底用）；
+ *   读不到 / 读出错 / 没有 metadata 都照常写
  */
-export async function rebuildSearchIndex(env, now = Date.now()) {
+export async function rebuildSearchIndex(env, now = Date.now(), opts = {}) {
   try {
     const kv = env && env.KV_SEARCH_INDEX;
     if (!kv || typeof kv.put !== 'function') {
@@ -113,7 +125,19 @@ export async function rebuildSearchIndex(env, now = Date.now()) {
       for (const it of value.items) delete it.text;
       body = JSON.stringify(value);
     }
-    await kv.put(KEY, body);
+    const sha = await contentSha(value);
+    if (opts && opts.skipUnchanged && typeof kv.getWithMetadata === 'function') {
+      let prev = null;
+      try {
+        prev = await kv.getWithMetadata(KEY);
+      } catch (e) {
+        prev = null; /* 读失败就照常写 */
+      }
+      if (prev && prev.value != null && prev.metadata && prev.metadata.sha === sha) {
+        return { ok: true, count: value.items.length, unchanged: true };
+      }
+    }
+    await kv.put(KEY, body, { metadata: { sha } });
     return { ok: true, count: value.items.length };
   } catch (e) {
     console.error('[daymark-search] rebuild failed: ' + (e && e.message ? e.message : 'error'));

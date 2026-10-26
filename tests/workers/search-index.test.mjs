@@ -25,17 +25,34 @@ function makeD1(db = new DatabaseSync(':memory:')) {
     run: async () => ({ meta: { changes: Number(db.prepare(sql).run(...args).changes) } }),
     all: async () => ({ results: db.prepare(sql).all(...args) }),
     first: async () => db.prepare(sql).get(...args) || null,
-    _exec: () => db.prepare(sql).run(...args),
+    _exec: () => ({ meta: { changes: Number(db.prepare(sql).run(...args).changes) } }),
   });
-  return { raw: db, prepare: (sql) => stmt(sql), batch: async (list) => list.map((s) => s._exec()) };
+  /* batch 和 D1 一样：一个事务，每条回 { meta: { changes } } */
+  return {
+    raw: db,
+    prepare: (sql) => stmt(sql),
+    batch: async (list) => {
+      db.exec('BEGIN');
+      try { const out = list.map((s) => s._exec()); db.exec('COMMIT'); return out; } catch (e) { db.exec('ROLLBACK'); throw e; }
+    },
+  };
 }
 function makeKV({ fail = false } = {}) {
   const puts = [];
+  const store = new Map();
   return {
     puts,
-    async put(key, value) {
+    store,
+    reads: 0,
+    async put(key, value, opt = {}) {
       if (fail) throw new Error('kv down');
-      puts.push({ key, value: JSON.parse(value) });
+      puts.push({ key, value: JSON.parse(value), metadata: opt.metadata ?? null });
+      store.set(key, { value, metadata: opt.metadata ?? null });
+    },
+    async getWithMetadata(key) {
+      this.reads++;
+      const o = store.get(key);
+      return o ? { value: o.value, metadata: o.metadata } : { value: null, metadata: null };
     },
     last() { return puts[puts.length - 1]; },
   };
@@ -175,6 +192,40 @@ test('Cron scheduled：重建并写入', async () => {
   assert.equal(kv.puts.length, 1);
   assert.equal(kv.last().key, 'site:daymark');
   assert.deepEqual(kv.last().value.items.map((i) => i.lang), ['zh', 'en']);
+});
+
+test('Cron 兜底：内容和 KV 里那份一样就不写；内容变了、旧值没有 metadata、读出错都照常写', async () => {
+  const db = makeD1();
+  const kv = makeKV();
+  await call('/api/quotes', { db, kv, method: 'POST', body: { text: '兜底' } });
+  assert.equal(kv.puts.length, 1);
+  assert.match(kv.last().metadata.sha, /^[0-9a-f]{64}$/);
+  assert.equal(kv.last().metadata.sha, await S.contentSha(kv.last().value));
+  assert.equal(kv.reads, 0, '写接口那条路不先读');
+  const cron = async () => {
+    const ctx = makeCtx();
+    await worker.scheduled({ cron: '17 * * * *', scheduledTime: Date.now() }, { D1_QUOTES: db, KV_SEARCH_INDEX: kv }, ctx);
+    await ctx.flush();
+  };
+  /* 内容没变：只读不写（generated 时间不算内容） */
+  await cron();
+  await cron();
+  assert.equal(kv.puts.length, 1);
+  assert.equal(kv.reads, 2);
+  /* 内容变了 → 写 */
+  db.raw.exec("UPDATE quotes SET text = '兜底 2'");
+  await cron();
+  assert.equal(kv.puts.length, 2);
+  await cron();
+  assert.equal(kv.puts.length, 2);
+  /* 旧值没有 metadata（比如旧版本写的）→ 写 */
+  kv.store.get('site:daymark').metadata = null;
+  await cron();
+  assert.equal(kv.puts.length, 3);
+  /* 读出错 → 照常写 */
+  kv.getWithMetadata = async () => { throw new Error('kv read down'); };
+  await cron();
+  assert.equal(kv.puts.length, 4);
 });
 
 test('出错不影响接口：KV 抛错、没绑 KV、D1 读失败都只打日志', async () => {

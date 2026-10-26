@@ -24,19 +24,29 @@ const Q = await import(W + '/src/api/_quotes.js');
 const TD = await import(W + '/src/api/_today.js');
 const { isPublic } = await import(W + '/src/index.js');
 
-/** node:sqlite 包成 D1 的样子 */
+/** node:sqlite 包成 D1 的样子（batch 和 D1 一样是一个事务，每条回 { meta: { changes } }） */
 function makeD1(db = new DatabaseSync(':memory:')) {
   const stmt = (sql, args = []) => ({
     bind: (...a) => stmt(sql, a),
     run: async () => ({ meta: { changes: Number(db.prepare(sql).run(...args).changes) } }),
     all: async () => ({ results: db.prepare(sql).all(...args) }),
     first: async () => db.prepare(sql).get(...args) || null,
-    _exec: () => db.prepare(sql).run(...args),
+    _exec: () => ({ meta: { changes: Number(db.prepare(sql).run(...args).changes) } }),
   });
   return {
     raw: db,
     prepare: (sql) => stmt(sql),
-    batch: async (list) => list.map((s) => s._exec()),
+    batch: async (list) => {
+      db.exec('BEGIN');
+      try {
+        const out = list.map((s) => s._exec());
+        db.exec('COMMIT');
+        return out;
+      } catch (e) {
+        db.exec('ROLLBACK');
+        throw e;
+      }
+    },
   };
 }
 function auth(role = null, throws = false) {
@@ -95,6 +105,86 @@ test('/api/today 公开：不验会话，CORS 只给 styrigx.com，空库 quote=
   assert.deepEqual(await r.json(), { ok: true, day: '2026-10-20', quote: null });
   const o = await call('/api/today', { method: 'OPTIONS' });
   assert.equal(o.status, 204);
+});
+
+test('每个接口请求只问网关一次（index.js 验过的角色经 context.data.role 传给 handler）；公开的 GET /api/today 不问', async () => {
+  let n = 0;
+  const counting = (role) => ({ async lockSession() { n++; return { ok: true, role }; } });
+  const db = makeD1();
+  const env = (role) => ({ AUTH: counting(role), D1_QUOTES: db, KV_SEARCH_INDEX: { async put() {} } });
+  const req = (p, method = 'GET', body) => new Request(ORIGIN + p, {
+    method,
+    headers: { Cookie: 'sgx-lock-session=x', Origin: ORIGIN, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const go = async (role, p, method, body) => {
+    n = 0;
+    const res = await worker.fetch(req(p, method, body), env(role), CTX);
+    return { res, n };
+  };
+  let r = await go('admin', '/api/quotes', 'POST', { text: '一句' });
+  assert.equal(r.res.status, 201);
+  assert.equal(r.n, 1);
+  const id = (await r.res.json()).quote.id;
+  for (const [role, p, method, body] of [
+    ['admin', '/api/quotes'],
+    ['visitor', '/api/quotes'],
+    ['admin', '/api/collections'],
+    ['visitor', '/api/collections'],
+    ['admin', '/api/quotes?id=' + id, 'PUT', { trans: 'A line' }],
+    ['visitor', '/api/quotes?id=' + id, 'PUT', { trans: 'x' }],
+    ['admin', '/api/collections', 'POST', { name: '晨读' }],
+    ['admin', '/api/today', 'PUT', { id }],
+    ['visitor', '/api/today', 'PUT', { id }],
+  ]) {
+    r = await go(role, p, method, body);
+    assert.ok(r.res.status < 500, p + ' ' + r.res.status);
+    assert.equal(r.n, 1, role + ' ' + (method || 'GET') + ' ' + p);
+  }
+  r = await go('visitor', '/api/quotes?id=' + id, 'DELETE');
+  assert.equal(r.res.status, 403);
+  assert.equal(r.n, 1);
+  r = await go('admin', '/api/quotes?id=' + id, 'DELETE');
+  assert.equal(r.res.status, 200);
+  assert.equal(r.n, 1);
+  r = await go(null, '/api/today');
+  assert.equal(r.res.status, 200);
+  assert.equal(r.n, 0);
+  /* handler 被直接调用（没有 context.data.role）时仍自己问网关；data.role 只认 admin / visitor */
+  const A = await import(W + '/src/api/_auth.js');
+  n = 0;
+  assert.equal(await A.sessionRole({ request: req('/api/quotes'), env: env('admin'), data: {} }), 'admin');
+  assert.equal(n, 1);
+  n = 0;
+  assert.equal(await A.sessionRole({ request: req('/api/quotes'), env: env('admin'), data: { role: 'visitor' } }), 'visitor');
+  assert.equal(n, 0);
+  assert.equal(await A.sessionRole({ request: req('/api/quotes'), env: env('visitor'), data: { role: 'owner' } }), 'visitor');
+  assert.equal(n, 1);
+});
+
+test('接口响应都带 nosniff 和 HSTS（core 不经过网关，自己补；公开的 /api/today 也有）', async () => {
+  for (const r of [await call('/api/quotes'), await call('/api/quotes', { role: 'admin' }), await call('/api/today'), await call('/api/nope', { role: 'admin' }), await call('/api/quotes', { throws: true })]) {
+    assert.equal(r.headers.get('X-Content-Type-Options'), 'nosniff');
+    assert.equal(r.headers.get('Strict-Transport-Security'), 'max-age=31536000');
+    assert.equal(r.headers.get('X-Daymark-Runtime'), 'worker');
+  }
+});
+
+test('删句子：句子和专题归属在同一个事务里删；第二条失败时句子也不删', async () => {
+  const db = makeD1();
+  const q = await add(db, { text: '要删的' });
+  const c = (await (await call('/api/collections', { role: 'admin', db, method: 'POST', body: { name: '晨读' } })).json()).collection;
+  assert.equal((await call('/api/quotes?id=' + q.id, { role: 'admin', db, method: 'PUT', body: { collections: [c.id] } })).status, 200);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM collection_quotes WHERE quote_id = ?').get(q.id).n, 1);
+  db.raw.exec("CREATE TRIGGER boom BEFORE DELETE ON collection_quotes BEGIN SELECT RAISE(ABORT, 'boom'); END");
+  assert.equal((await call('/api/quotes?id=' + q.id, { role: 'admin', db, method: 'DELETE' })).status, 500);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM quotes WHERE id = ?').get(q.id).n, 1);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM collection_quotes WHERE quote_id = ?').get(q.id).n, 1);
+  db.raw.exec('DROP TRIGGER boom');
+  assert.equal((await call('/api/quotes?id=' + q.id, { role: 'admin', db, method: 'DELETE' })).status, 200);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM quotes WHERE id = ?').get(q.id).n, 0);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM collection_quotes WHERE quote_id = ?').get(q.id).n, 0);
+  assert.equal((await call('/api/quotes?id=' + q.id, { role: 'admin', db, method: 'DELETE' })).status, 404);
 });
 
 test('写：非同源 403、没 Origin 403、访客 403、未登录 401', async () => {

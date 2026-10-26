@@ -7,13 +7,14 @@
  * 请求顺序：
  *   1. GET /api/today：今日一句，主站首页 / 锁屏跨站调用的公开只读接口（带 CORS），不验会话；
  *      PUT /api/today（余响「设为今日」）和其他写接口一样先问网关，接口里再要 admin + 同源
- *   2. 其余 /api/*：先问网关会话（admin、visitor 都可）；无效 → 401 JSON（不 302，fetch 不跟跳转）
- *   3. 按路由表交给 src/api/<路径>.js；写操作自己再要求 admin + 同源
+ *   2. 其余 /api/*：先问网关会话（admin、visitor 都可）；无效 → 401 JSON（不 302，fetch 不跟跳转）。
+ *      角色放进 context.data.role，handler 用 sessionRole(context) 直接取，每个请求只问网关一次。
+ *   3. 按路由表交给 src/api/<路径>.js；写操作自己再要求 admin（读 context.data.role）+ 同源
  * /api/lock-session-check 由网关的更精确路由直接回答，到不了这里；万一到了，同样问网关。
  * 不在路由表里的路径 → 404；方法不支持 → 405。
  *
  * 全站搜索索引（src/search-index.js）：写接口成功后用 ctx.waitUntil 重建 KV site:daymark；
- * Cron（wrangler.toml [triggers]）每小时兜底重建。重建出错只打日志，不影响接口响应。
+ * Cron（wrangler.toml [triggers]）每小时兜底重建，内容没变不写 KV。重建出错只打日志，不影响接口响应。
  */
 import { API_ROUTES } from './routes.js';
 import { verifySession } from './api/_auth.js';
@@ -57,12 +58,12 @@ export function resolve(pathname) {
   return mod ? { mod, params: {}, functionPath: key } : null;
 }
 
-function makeContext(request, env, ctx, params, functionPath) {
+function makeContext(request, env, ctx, params, functionPath, role) {
   return {
     request,
     env,
     params,
-    data: {},
+    data: role ? { role } : {},
     functionPath,
     waitUntil: (p) => { if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(p); },
     passThroughOnException: () => {},
@@ -70,10 +71,18 @@ function makeContext(request, env, ctx, params, functionPath) {
   };
 }
 
-/** 响应打上 X-Daymark-Runtime: worker，部署后能从外部确认接口真的走了本 Worker（不含敏感信息） */
+/* 接口直接由本 Worker 回答，不经过网关，网关加的 HSTS 到不了这里：自己补（值同主站网关，1 年、不带 includeSubDomains） */
+const HSTS = 'max-age=31536000';
+
+/**
+ * 响应打上 X-Daymark-Runtime: worker，部署后能从外部确认接口真的走了本 Worker（不含敏感信息）；
+ * 统一补 X-Content-Type-Options: nosniff 和 Strict-Transport-Security（公开的 /api/today 也一样）。
+ */
 function tag(res) {
   const out = new Response(res.body, res);
   out.headers.set('X-Daymark-Runtime', 'worker');
+  out.headers.set('X-Content-Type-Options', 'nosniff');
+  out.headers.set('Strict-Transport-Security', HSTS);
   return out;
 }
 
@@ -87,8 +96,9 @@ export async function handle(request, env, ctx) {
     return role ? json(200, { ok: true }) : json(401, { ok: false });
   }
 
+  let role = null;
   if (!isPublic(path, request.method)) {
-    const role = await verifySession(request, env);
+    role = await verifySession(request, env);
     if (!role) return json(401, { ok: false, error: 'unauthorized' });
   }
 
@@ -96,7 +106,7 @@ export async function handle(request, env, ctx) {
   if (!hit) return json(404, { ok: false, error: 'not-found' });
   const handler = pickHandler(hit.mod, request.method);
   if (!handler) return json(405, { ok: false, error: 'method' });
-  const res = await handler(makeContext(request, env, ctx, hit.params, hit.functionPath));
+  const res = await handler(makeContext(request, env, ctx, hit.params, hit.functionPath, role));
   /* 设为今日不改句子本身，不用重建搜索索引 */
   if (res && isMutation(request.method, res.status) && hit.functionPath !== '/api/today') scheduleRebuild(env, ctx);
   return res;
@@ -128,13 +138,13 @@ export default {
   },
 
   /**
-   * Cron 兜底：每小时重建一次搜索索引（首次部署后也靠它填上）。
+   * Cron 兜底：每小时重建一次搜索索引（首次部署后也靠它填上）；内容和 KV 里那份一样就不写（省账号共享的 KV 写额度）。
    * @param {any} controller
    * @param {Record<string, any>} env
    * @param {{ waitUntil(p: Promise<any>): void }} ctx
    */
   async scheduled(controller, env, ctx) {
-    const p = rebuildSearchIndex(env);
+    const p = rebuildSearchIndex(env, Date.now(), { skipUnchanged: true });
     if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(p);
     await p;
   },
