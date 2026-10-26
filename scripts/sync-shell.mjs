@@ -4,12 +4,14 @@
  * 主站是唯一来源；本仓库只存一份「供应商副本」，放在标记段 / 供应商目录里，勿手改。
  *
  * 用法：
- *   node scripts/sync-shell.mjs                    从 styrigx-space@main 拉取并写入
- *   node scripts/sync-shell.mjs --ref <分支|提交>    指定主站的 ref
- *   node scripts/sync-shell.mjs --from <主站目录>    从本地主站检出读（主站改动还没合并时用）
+ *   node scripts/sync-shell.mjs                    从 styrigx-space@main 拉取并写入；lock 记下 main 当时的完整提交 SHA（锁定版本）
+ *   node scripts/sync-shell.mjs --ref <分支|提交>    指定主站的 ref（同样解析成完整提交 SHA 写进 lock）
+ *   node scripts/sync-shell.mjs --from <主站目录>    从本地主站检出读（主站改动还没合并时用；lock 不是 SHA，--check 会要求重新同步）
  *   node scripts/sync-shell.mjs --check            CI 用：① 供应商副本没被手改（和 sgx-shell.lock.json 一致）
- *                                                  ② 主站 ref（默认 main）上的外壳版本和副本一致；不一致 exit 1。
- *                                                  主站 ref 上还没有 web/shared/shell（404）时只提示、不算失败（加 --strict 则失败）。
+ *                                                  ② 副本确实来自主站：按 lock 锁定的提交 SHA 拉主站外壳，版本和文件指纹都要和 lock 一致；
+ *                                                     主站 main 前进不会让本检查变红（升级外壳 = 显式跑一次同步、改 lock 的 PR）
+ *                                                  ③ 主站 main 上有更新的外壳时只打 ::notice::，不算失败。
+ *                                                  拉主站失败只提示、不算失败（加 --strict 则失败）。
  *
  * 拉取：先读 manifest.json，再逐个拉文件并校验 sha256，全部通过才写盘。
  * __SITE_CONFIG__ 段是本仓库独有的写入位置，其余代码两个子站（blog / daymark）一字不差。
@@ -143,7 +145,13 @@ async function main() {
       if (body === null || sha(body) !== lock.vendored[t.path]) bad.push(t.path);
     }
     if (bad.length) { console.error('共享外壳副本被手改或缺失：' + bad.join('、') + '；改主站后运行 node scripts/sync-shell.mjs'); process.exit(1); }
-    const ref = o.refGiven || o.from ? o.ref : 'main';
+    /* ② 按 lock 锁定的提交核对（--ref / --from 显式给了就用给的） */
+    const pinned = /^[0-9a-f]{40}$/.test(String(lock.ref)) ? lock.ref : '';
+    const ref = o.refGiven || o.from ? o.ref : pinned;
+    if (!ref) {
+      console.error(`sgx-shell.lock.json 的 ref（${lock.ref}）不是主站的完整提交 SHA：运行 node scripts/sync-shell.mjs 重新同步（会锁定到主站当时的提交）`);
+      process.exit(1);
+    }
     let up;
     try { up = await fetchBundle({ ...o, ref }); } catch (e) {
       console.error(`读取主站外壳失败（${ref}）：${e.message}`); process.exit(o.strict ? 1 : 0);
@@ -154,14 +162,32 @@ async function main() {
       console.log('::notice::' + msg);
       return;
     }
-    if (up.manifest.version !== lock.version) {
-      console.error(`共享外壳过期：本地 v${lock.version}（${lock.ref}），主站 ${ref} 是 v${up.manifest.version}；运行 node scripts/sync-shell.mjs`);
+    const sameFiles = JSON.stringify(Object.entries(up.manifest.files).sort()) === JSON.stringify(Object.entries(lock.files || {}).sort());
+    if (up.manifest.version !== lock.version || !sameFiles) {
+      console.error(`sgx-shell.lock.json 和主站 ${ref} 上的外壳对不上：lock 记的是 v${lock.version}，主站这个提交上是 v${up.manifest.version}；运行 node scripts/sync-shell.mjs 重新同步`);
       process.exit(1);
     }
-    console.log(`shared shell up to date: v${lock.version} (${ref})`);
+    console.log(`shared shell matches the pinned main-site commit: v${lock.version} (${ref})`);
+    /* ③ 只提示：主站 main 上的外壳更新了（升级要显式同步，不让无关 PR 变红） */
+    if (!o.refGiven && !o.from) {
+      try {
+        const m = await getUpstream({ ...o, ref: 'main' }, 'manifest.json');
+        const latest = m.status === 200 ? JSON.parse(m.text).version : '';
+        if (latest && latest !== lock.version) console.log(`::notice::主站 main 上的共享外壳是 v${latest}（本仓库锁定 v${lock.version}）；要升级就运行 node scripts/sync-shell.mjs 并提交`);
+      } catch { /* 只是提示，拉不到就算了 */ }
+    }
     return;
   }
-  const label = o.from ? `${o.ref}（本地 ${path.basename(path.resolve(o.from))}）` : o.ref;
+  /* 从 GitHub 拉时先把 ref 解析成完整提交 SHA：lock 锁定到这个提交，--check 只和它比 */
+  let label = o.ref;
+  if (o.from) label = `${o.ref}（本地 ${path.basename(path.resolve(o.from))}）`;
+  else if (!/^[0-9a-f]{40}$/.test(o.ref)) {
+    const r = await fetch(`https://api.github.com/repos/${UPSTREAM}/commits/${encodeURIComponent(o.ref)}`, { headers: { accept: 'application/vnd.github.sha' } });
+    const s = (await r.text()).trim();
+    if (r.status !== 200 || !/^[0-9a-f]{40}$/.test(s)) throw new Error(`解析主站 ${o.ref} 的提交 SHA 失败：HTTP ${r.status}`);
+    label = s;
+  }
+  if (!o.from) o.ref = label;
   const bundle = await fetchBundle(o);
   if (!bundle) { console.error(`主站 ${UPSTREAM}@${o.ref} 上没有 ${UP_DIR}`); process.exit(1); }
   const { out, guard } = renderTargets(bundle, label);

@@ -2,7 +2,7 @@
   "_note": "scripts/sync-shell.mjs 写入，勿手改：记录本仓库的共享外壳副本来自主站哪个版本",
   "source": "styrigx/styrigx-space",
   "dir": "web/shared/shell",
-  "ref": "main",
+  "ref": "4f29ef5db56095dd9231c3a848eda63701d14a32",
   "version": "23673824df0b",
   "files": {
     "tokens.css": "f56a0696035458455a1c210634bd9c3abdb3d6acb332e00f5e327f90e528fba8",
