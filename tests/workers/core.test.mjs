@@ -3,6 +3,7 @@
 // - /api/today 公开（CORS 只给 styrigx.com），其余先问网关；网关出错 → 500 不是 401
 // - 读：visitor 只看公开，admin 看全部；写：非同源 403、visitor 403、校验、增改删
 // - 今日一句：只从公开里挑，同一天固定，按北京时间换天；当天第一次请求锁进 daily_pick（加句子不变）；
+//   GET 只给今天（?d= 别的日期 / 格式不对 400）；缓存不跨过北京时间零点；边缘缓存键只认当天，写操作后清掉；
 //   记下的那句被删 / 改私密就重挑；PUT /api/today 设为今日只给管理员 + 同源（未登录 401、访客 403、私密 409）
 // - 三页签：出处类型、随手一笔（访客和 /api/today 永不返回）、百味专题的增删改、归属与排序、访客只见公开
 // - 迁移 0001 + 0002 依次跑在 SQLite 上，接口照常工作
@@ -99,10 +100,10 @@ test('网关回答：只认 AuthVerifier.lockSession 的 admin / visitor；别�
 });
 
 test('/api/today 公开：不验会话，CORS 只给 styrigx.com，空库 quote=null', async () => {
-  const r = await call('/api/today?d=2026-10-20');
+  const r = await call('/api/today');
   assert.equal(r.status, 200);
   assert.equal(r.headers.get('Access-Control-Allow-Origin'), 'https://styrigx.com');
-  assert.deepEqual(await r.json(), { ok: true, day: '2026-10-20', quote: null });
+  assert.deepEqual(await r.json(), { ok: true, day: Q.dayInShanghai(), quote: null });
   const o = await call('/api/today', { method: 'OPTIONS' });
   assert.equal(o.status, 204);
 });
@@ -241,17 +242,43 @@ test('今日一句：只挑公开的；同一天固定；不同天会换', async
   const db = makeD1();
   for (let i = 0; i < 12; i++) await add(db, { text: '句' + i });
   await add(db, { text: '私密', visibility: 'private' });
+  /* 接口只给今天：同一天两次一样 */
+  const a = await (await call('/api/today', { db })).json();
+  const b = await (await call('/api/today', { db })).json();
+  assert.equal(a.quote.text, b.quote.text);
+  assert.notEqual(a.quote.text, '私密');
+  assert.ok(!('visibility' in a.quote));
+  /* 别的日期不走接口了（?d= 400），挑句规则直接测 resolveDay（只读不写） */
   const seen = new Set();
   for (let d = 1; d <= 20; d++) {
     const day = '2026-11-' + String(d).padStart(2, '0');
-    const a = await (await call('/api/today?d=' + day, { db })).json();
-    const b = await (await call('/api/today?d=' + day, { db })).json();
-    assert.equal(a.quote.text, b.quote.text);
-    assert.notEqual(a.quote.text, '私密');
-    assert.ok(!('visibility' in a.quote));
-    seen.add(a.quote.text);
+    const x = TD.publicQuote(await TD.resolveDay(db, day));
+    const y = TD.publicQuote(await TD.resolveDay(db, day));
+    assert.equal(x.text, y.text);
+    assert.notEqual(x.text, '私密');
+    assert.ok(!('visibility' in x));
+    seen.add(x.text);
   }
   assert.ok(seen.size > 3, '20 天里应该换过好几句');
+});
+
+test('/api/today 只给今天：?d= 是今天照常；别的日期、格式不对、空值 → 400 bad-day，也不碰 D1', async () => {
+  const db = makeD1();
+  for (let i = 0; i < 6; i++) await add(db, { text: '句' + i });
+  const t = await call('/api/today?d=' + Q.dayInShanghai(), { db });
+  assert.equal(t.status, 200);
+  assert.equal((await t.json()).day, Q.dayInShanghai());
+  let reads = 0;
+  const spy = { ...db, prepare: (sql) => { reads++; return db.prepare(sql); } };
+  for (const d of ['2026-01-02', '2099-12-31', '2026-1-2', 'today', '', '2026-01-02T00:00', Q.dayInShanghai() + 'x']) {
+    reads = 0;
+    const r = await call('/api/today?d=' + encodeURIComponent(d), { db: spy });
+    assert.equal(r.status, 400, 'd=' + d);
+    assert.deepEqual(await r.json(), { ok: false, error: 'bad-day' });
+    assert.equal(r.headers.get('X-Content-Type-Options'), 'nosniff');
+    assert.equal(reads, 0, '400 不碰 D1：d=' + d);
+  }
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS n FROM daily_pick WHERE day != ?").get(Q.dayInShanghai()).n, 0);
 });
 
 test('北京时间换天：UTC 15:59 还是当天，16:00 是第二天', () => {
@@ -303,11 +330,14 @@ test('随手一笔不外泄：访客列表、访客专题、/api/today 都没有
   assert.ok(!('collections' in v.quotes[0]));
   const ct = await (await call('/api/collections', { role: 'visitor', db })).text();
   assert.ok(!ct.includes(SECRET));
+  const t = await (await call('/api/today', { db })).text();
+  assert.ok(!t.includes(SECRET));
+  assert.ok(!('note' in JSON.parse(t).quote));
+  assert.ok(!('visibility' in JSON.parse(t).quote));
   for (let d = 1; d <= 3; d++) {
-    const t = await (await call('/api/today?d=2026-12-0' + d, { db })).text();
-    assert.ok(!t.includes(SECRET));
-    assert.ok(!('note' in JSON.parse(t).quote));
-    assert.ok(!('visibility' in JSON.parse(t).quote));
+    const pq = JSON.stringify(TD.publicQuote(await TD.resolveDay(db, '2026-12-0' + d)));
+    assert.ok(!pq.includes(SECRET));
+    assert.ok(!('note' in JSON.parse(pq)) && !('visibility' in JSON.parse(pq)));
   }
 });
 
@@ -528,14 +558,16 @@ test('锁定：当天第一次请求挑好写进 daily_pick（auto），之后�
   assert.equal((await getToday(fresh)).quote.id, Q.pickForDay(ids, TODAY()).id);
 });
 
-test('锁定：看别的日期（?d=）只读不写；那天有记录就读记录', async () => {
+test('锁定：别的日期接口不给（?d= 400、不写库）；resolveDay 看别的日期只读不写，那天有记录就读记录', async () => {
   const db = makeD1();
   for (let i = 0; i < 6; i++) await add(db, { text: '句' + i });
-  await getToday(db, null, '/api/today?d=2026-01-02');
+  assert.equal((await call('/api/today?d=2026-01-02', { db })).status, 400);
+  assert.equal(pickRow(db, '2026-01-02'), null);
+  await TD.resolveDay(db, '2026-01-02');
   assert.equal(pickRow(db, '2026-01-02'), null);
   const qs = db.raw.prepare('SELECT id FROM quotes ORDER BY id').all();
   db.raw.prepare("INSERT INTO daily_pick (day, quote_id, set_by, set_at) VALUES ('2026-01-02', ?, 'admin', 1)").run(qs[3].id);
-  assert.equal((await getToday(db, null, '/api/today?d=2026-01-02')).quote.id, qs[3].id);
+  assert.equal((await TD.resolveDay(db, '2026-01-02')).id, qs[3].id);
 });
 
 test('锁定：记下的那句被删了 / 改成私密了 → 重挑一条公开的并重新锁住；空库不写', async () => {
@@ -615,6 +647,147 @@ test('设为今日：管理员改写当天这一句；所有人的 GET 跟着变
   /* 再设一次照样覆盖 */
   assert.equal((await (await setToday(db, before)).json()).quote.id, before);
   assert.equal((await getToday(db)).quote.id, before);
-  /* GET 的缓存：公开、一分钟（管理员改了之后主站很快跟上） */
-  assert.equal((await call('/api/today', { db })).headers.get('Cache-Control'), 'public, max-age=60');
+  /* GET 的缓存：公开、最多一分钟、不跨过北京时间零点（管理员改了之后主站很快跟上） */
+  const cc = (await call('/api/today', { db })).headers.get('Cache-Control');
+  const m = /^public, max-age=(\d+), s-maxage=(\d+)$/.exec(cc) || /^public, max-age=(0), must-revalidate$/.exec(cc);
+  assert.ok(m, cc);
+  assert.ok(Number(m[1]) <= 60);
+});
+
+/* ================= /api/today 缓存：不跨过换天；边缘缓存（caches.default） ================= */
+const TODAY_JS = await import(W + '/src/api/today.js');
+
+test('缓存秒数：最多 60 秒，离北京时间零点不足 60 秒时只缓存到零点，零点前最后一秒不缓存', () => {
+  const at = (s) => Date.parse(s);
+  assert.equal(TODAY_JS.cacheSeconds(at('2026-10-26T12:00:00+08:00')), 60);
+  assert.equal(TODAY_JS.cacheSeconds(at('2026-10-26T23:58:59+08:00')), 60);
+  assert.equal(TODAY_JS.cacheSeconds(at('2026-10-26T23:59:30+08:00')), 30);
+  assert.equal(TODAY_JS.cacheSeconds(at('2026-10-26T23:59:59.500+08:00')), 0);
+  assert.equal(TODAY_JS.cacheSeconds(at('2026-10-27T00:00:00+08:00')), 60);
+  /* UTC 16:00 就是北京零点 */
+  assert.equal(TODAY_JS.cacheSeconds(at('2026-10-26T15:59:45Z')), 15);
+});
+
+test('_lib.js 的 json() / err() 自己就带 nosniff（不只靠 index.js 的 tag()）', async () => {
+  const L = await import(W + '/src/api/_lib.js');
+  assert.equal(L.json({ ok: true }).headers.get('X-Content-Type-Options'), 'nosniff');
+  assert.equal(L.err('x').headers.get('X-Content-Type-Options'), 'nosniff');
+  assert.equal(L.json({ ok: true }, 200, { 'Cache-Control': 'public, max-age=1' }).headers.get('X-Content-Type-Options'), 'nosniff');
+});
+
+/** 假的 caches.default：按 URL 存；记下 put / delete 的键 */
+function fakeCaches() {
+  const store = new Map();
+  const log = { put: [], del: [] };
+  const def = {
+    async match(req) { const r = store.get(new URL(req.url).toString()); return r ? new Response(r.body, { status: r.status, headers: r.headers }) : undefined; },
+    async put(req, res) { log.put.push(req.url); store.set(req.url, { body: await res.text(), status: res.status, headers: [...res.headers] }); },
+    async delete(req) { log.del.push(req.url); return store.delete(req.url); },
+  };
+  return { caches: { default: def }, store, log };
+}
+async function withCaches(fn) {
+  const had = Object.prototype.hasOwnProperty.call(globalThis, 'caches');
+  const old = globalThis.caches;
+  const f = fakeCaches();
+  globalThis.caches = f.caches;
+  try {
+    await fn(f);
+  } finally {
+    if (had) globalThis.caches = old;
+    else delete globalThis.caches;
+  }
+}
+/** 和 call 一样，但收集 waitUntil 的 promise 并等完 */
+async function callWait(p, o = {}) {
+  const pending = [];
+  const ctx = { waitUntil: (x) => pending.push(x) };
+  const headers = { Cookie: 'sgx-lock-session=x', Origin: 'origin' in o ? o.origin : ORIGIN };
+  if (o.body !== undefined) headers['Content-Type'] = 'application/json';
+  const req = new Request(ORIGIN + p, { method: o.method || 'GET', headers, body: o.body === undefined ? undefined : JSON.stringify(o.body) });
+  const res = await worker.fetch(req, { AUTH: auth(o.role || null), D1_QUOTES: o.db, KV_SEARCH_INDEX: { async put() {} } }, ctx);
+  await Promise.all(pending);
+  return res;
+}
+
+test('边缘缓存：第一次读 D1 并存一份（键只有当天日期）；之后命中不碰 D1；乱加查询串也打不穿', async () => {
+  await withCaches(async ({ store, log }) => {
+    const db = makeD1();
+    for (let i = 0; i < 6; i++) await add(db, { text: '句' + i });
+    let reads = 0;
+    const spy = { ...db, prepare: (sql) => { reads++; return db.prepare(sql); } };
+    const a = await callWait('/api/today', { db: spy });
+    assert.equal(a.status, 200);
+    const ja = await a.json();
+    assert.ok(reads > 0);
+    if (TODAY_JS.cacheSeconds() === 0) return; /* 正好卡在零点前最后一秒：不缓存，后面不测 */
+    assert.deepEqual(log.put, [ORIGIN + '/api/today?day=' + Q.dayInShanghai()]);
+    for (const p of ['/api/today', '/api/today?x=1', '/api/today?d=' + Q.dayInShanghai(), '/api/today/']) {
+      reads = 0;
+      const r = await callWait(p, { db: spy });
+      assert.equal(r.status, 200, p);
+      assert.deepEqual(await r.json(), ja, p);
+      assert.equal(reads, 0, '命中缓存不碰 D1：' + p);
+      assert.equal(r.headers.get('X-Content-Type-Options'), 'nosniff');
+      assert.equal(r.headers.get('Access-Control-Allow-Origin'), 'https://styrigx.com');
+      assert.match(r.headers.get('Cache-Control'), /^public, max-age=\d+, s-maxage=\d+$/);
+    }
+    assert.equal(store.size, 1);
+    assert.equal(log.put.length, 1);
+    /* 400 不进缓存 */
+    assert.equal((await callWait('/api/today?d=2026-01-02', { db: spy })).status, 400);
+    assert.equal(store.size, 1);
+  });
+});
+
+test('边缘缓存：命中时 Cache-Control 按现在重算，浏览器缓存也不跨过北京时间零点', async () => {
+  const realNow = Date.now;
+  await withCaches(async ({ log }) => {
+    try {
+      const db = makeD1();
+      for (let i = 0; i < 3; i++) await add(db, { text: '句' + i });
+      Date.now = () => Date.parse('2026-10-26T23:58:30+08:00');
+      const a = await callWait('/api/today', { db });
+      assert.equal(a.headers.get('Cache-Control'), 'public, max-age=60, s-maxage=60');
+      assert.deepEqual(log.put, [ORIGIN + '/api/today?day=2026-10-26']);
+      Date.now = () => Date.parse('2026-10-26T23:59:50+08:00');
+      let reads = 0;
+      const spy = { ...db, prepare: (sql) => { reads++; return db.prepare(sql); } };
+      const b = await callWait('/api/today', { db: spy });
+      assert.equal(reads, 0);
+      assert.equal(b.headers.get('Cache-Control'), 'public, max-age=10, s-maxage=10');
+      /* 换天：键带日期，不会读到昨天那份 */
+      Date.now = () => Date.parse('2026-10-27T00:00:01+08:00');
+      const c = await (await callWait('/api/today', { db: spy })).json();
+      assert.equal(c.day, '2026-10-27');
+      assert.ok(reads > 0);
+    } finally {
+      Date.now = realNow;
+    }
+  });
+});
+
+test('边缘缓存：设为今日、改句子（改私密 / 删）之后清掉今天那份，下一次 GET 拿到新的', async () => {
+  await withCaches(async ({ store, log }) => {
+    const db = makeD1();
+    for (let i = 0; i < 6; i++) await add(db, { text: '句' + i });
+    const key = ORIGIN + '/api/today?day=' + Q.dayInShanghai();
+    const before = (await (await callWait('/api/today', { db })).json()).quote.id;
+    const target = db.raw.prepare("SELECT id FROM quotes WHERE id != ? ORDER BY id").get(before).id;
+    const s = await callWait('/api/today', { db, method: 'PUT', body: { id: target }, role: 'admin' });
+    assert.equal(s.status, 200);
+    assert.ok(log.del.includes(key));
+    assert.equal((await (await callWait('/api/today', { db })).json()).quote.id, target);
+    /* 改成私密：清缓存，GET 不再给这句 */
+    log.del.length = 0;
+    const u = await callWait('/api/quotes?id=' + target, { db, method: 'PUT', body: { visibility: 'private' }, role: 'admin' });
+    assert.equal(u.status, 200);
+    assert.ok(log.del.includes(key));
+    assert.ok(!store.has(key));
+    assert.notEqual((await (await callWait('/api/today', { db })).json()).quote.id, target);
+    /* 没成功的写（访客 403）不清 */
+    log.del.length = 0;
+    assert.equal((await callWait('/api/quotes?id=' + target, { db, method: 'DELETE', role: 'visitor' })).status, 403);
+    assert.deepEqual(log.del, []);
+  });
 });

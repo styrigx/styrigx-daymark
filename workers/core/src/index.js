@@ -5,7 +5,8 @@
  * 本 Worker 不持任何钥匙：会话交给主站鉴权网关验（服务绑定 AUTH，见 src/api/_auth.js）。
  *
  * 请求顺序：
- *   1. GET /api/today：今日一句，主站首页 / 锁屏跨站调用的公开只读接口（带 CORS），不验会话；
+ *   1. GET /api/today：今日一句，主站首页 / 锁屏跨站调用的公开只读接口（带 CORS），不验会话；只给北京时间的今天（?d= 别的日期 400），
+ *      边缘缓存最多 60 秒、不跨过换天（见 api/today.js）；
  *      PUT /api/today（余响「设为今日」）和其他写接口一样先问网关，接口里再要 admin + 同源
  *   2. 其余 /api/*：先问网关会话（admin、visitor 都可）；无效 → 401 JSON（不 302，fetch 不跟跳转）。
  *      角色放进 context.data.role，handler 用 sessionRole(context) 直接取，每个请求只问网关一次。
@@ -19,6 +20,7 @@
 import { API_ROUTES } from './routes.js';
 import { verifySession } from './api/_auth.js';
 import { rebuildSearchIndex, isMutation } from './search-index.js';
+import { purgeTodayCache } from './api/today.js';
 
 const METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
 const NO_STORE = 'private, no-store';
@@ -107,8 +109,13 @@ export async function handle(request, env, ctx) {
   const handler = pickHandler(hit.mod, request.method);
   if (!handler) return json(405, { ok: false, error: 'method' });
   const res = await handler(makeContext(request, env, ctx, hit.params, hit.functionPath, role));
-  /* 设为今日不改句子本身，不用重建搜索索引 */
-  if (res && isMutation(request.method, res.status) && hit.functionPath !== '/api/today') scheduleRebuild(env, ctx);
+  /* 设为今日不改句子本身，不用重建搜索索引（它自己清今日缓存） */
+  if (res && isMutation(request.method, res.status) && hit.functionPath !== '/api/today') {
+    scheduleRebuild(env, ctx);
+    /* 句子被删 / 改私密 / 改了字：今天那句可能跟着变，清掉本机房的今日边缘缓存 */
+    const purge = purgeTodayCache(request);
+    if (purge && ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(purge);
+  }
   return res;
 }
 
