@@ -1,6 +1,103 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind 4（CSS-first 配置，取代原 web/tailwind.config.js + web/postcss.config.js；构建：npm run build:css = @tailwindcss/cli）
+   - source(none) + @source：只扫原 content 那四处（layouts / content / static/js / assets/js），不自动扫整个仓库
+   - 工具类在 Tailwind 4 里进原生 @layer utilities；本文件其余规则不分层，同属性冲突时总是赢过工具类 */
+@import "tailwindcss" source(none);
+@source "../../layouts/**/*.html";
+@source "../../content/**/*.md";
+@source "../../static/js/**/*.js";
+@source "../js/**/*.js";
+
+/* 原 darkMode: 'class' */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* 原 theme.extend：字体、字距 */
+@theme {
+  --font-sans: Inter, "Inter Fallback", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --tracking-heading: -0.02em;
+}
+
+/* 原 theme.extend.colors.m：值是运行时变量（--m-* 由下面共享外壳角色和配色 cookie 决定），用 inline 让工具类直接写 var(--m-*)，同 Tailwind 3 产物 */
+@theme inline {
+  --color-m-primary: var(--m-primary);
+  --color-m-on-primary: var(--m-on-primary);
+  --color-m-primary-fill: var(--m-primary-fill);
+  --color-m-on-primary-fill: var(--m-on-primary-fill);
+  --color-m-primary-container: var(--m-primary-container);
+  --color-m-on-primary-container: var(--m-on-primary-container);
+  --color-m-secondary: var(--m-secondary);
+  --color-m-on-secondary: var(--m-on-secondary);
+  --color-m-secondary-container: var(--m-secondary-container);
+  --color-m-on-secondary-container: var(--m-on-secondary-container);
+  --color-m-tertiary: var(--m-tertiary);
+  --color-m-on-tertiary: var(--m-on-tertiary);
+  --color-m-tertiary-container: var(--m-tertiary-container);
+  --color-m-on-tertiary-container: var(--m-on-tertiary-container);
+  --color-m-surface: var(--m-surface);
+  --color-m-on-surface: var(--m-on-surface);
+  --color-m-on-surface-variant: var(--m-on-surface-variant);
+  --color-m-container-lowest: var(--m-container-lowest);
+  --color-m-container-low: var(--m-container-low);
+  --color-m-container: var(--m-container);
+  --color-m-container-high: var(--m-container-high);
+  --color-m-container-highest: var(--m-container-highest);
+  --color-m-outline: var(--m-outline);
+  --color-m-error: var(--m-error);
+  --color-m-on-error: var(--m-on-error);
+  --color-m-inverse-surface: var(--m-inverse-surface);
+  --color-m-inverse-on-surface: var(--m-inverse-on-surface);
+}
+
+/* Tailwind 3 兼容：保持升级前的渲染（以后想要 4 的默认可以逐条删）
+   - 官方升级指南：默认边框色仍是 3 的 gray-200 #e5e7eb（4 改成了 currentColor）；按钮仍是手形光标（4 改回浏览器默认）
+   - 4 的 preflight 比 3 多清的几处，用 revert-layer 退回浏览器默认（= 3 的表现）：<option> 内边距（4 的 * 清了 padding）、
+     日期 / 时间输入框内部伪元素的高度和内边距（4 新加，日期框会矮 2px）；搜索框 outline-offset -2px、占位文字 #9ca3af（3 的 preflight 有，4 删了 / 改了） */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: #e5e7eb; /* = Tailwind 3 的 gray-200（4 的 gray-200 是 oklch，略有不同） */
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: #9ca3af; /* = Tailwind 3 preflight 的 gray-400（4 改成当前文字色 50%） */
+  }
+  option {
+    padding: revert-layer;
+  }
+  [type="search"] {
+    outline-offset: -2px;
+  }
+  ::-webkit-date-and-time-value {
+    min-height: revert-layer;
+    text-align: revert-layer;
+  }
+  ::-webkit-datetime-edit {
+    display: revert-layer;
+  }
+  ::-webkit-datetime-edit-fields-wrapper {
+    padding: revert-layer;
+  }
+  ::-webkit-datetime-edit,
+  ::-webkit-datetime-edit-year-field,
+  ::-webkit-datetime-edit-month-field,
+  ::-webkit-datetime-edit-day-field,
+  ::-webkit-datetime-edit-hour-field,
+  ::-webkit-datetime-edit-minute-field,
+  ::-webkit-datetime-edit-second-field,
+  ::-webkit-datetime-edit-millisecond-field,
+  ::-webkit-datetime-edit-meridiem-field {
+    padding-block: revert-layer;
+  }
+  ::-webkit-calendar-picker-indicator {
+    line-height: revert-layer;
+  }
+}
 
 /* ===== 配色：全部来自下面共享外壳的 --sgx-* 角色（跟主站 sgx-ui cookie），本站不定义主题色 ===== */
 :root {

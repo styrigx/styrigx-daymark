@@ -33,7 +33,7 @@ Styrigx's Space 的子站。读到、听到、想到一句好话，打开就记�
 
 | 部分 | 用什么 |
 |---|---|
-| 页面 | Hugo + Tailwind，Cloudflare Pages 只放静态文件 |
+| 页面 | Hugo + Tailwind 4（CSS-first 配置写在 `web/assets/css/input.css`，`npm run build:css` 用 `@tailwindcss/cli`），Cloudflare Pages 只放静态文件 |
 | 接口 | Worker `styrigx-daymark-core`（`workers/core/`），路由 `daymark.styrigx.com/api/*` |
 | 数据 | Cloudflare D1 `styrigx-daymark-core` |
 | 登录 | 不持任何钥匙：页面由主站鉴权网关验锁屏会话（`sgx-lock-session`），接口经服务绑定问网关（`AuthVerifier.lockSession`，角色 `admin` / `visitor`） |
