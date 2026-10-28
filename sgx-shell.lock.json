@@ -2,8 +2,8 @@
   "_note": "scripts/sync-shell.mjs 写入，勿手改：记录本仓库的共享外壳副本来自主站哪个版本",
   "source": "styrigx/styrigx-space",
   "dir": "web/shared/shell",
-  "ref": "4f29ef5db56095dd9231c3a848eda63701d14a32",
-  "version": "23673824df0b",
+  "ref": "5df9d0130e5243bb2e12220788cee4f13b7f3796",
+  "version": "004e9054e471",
   "files": {
     "tokens.css": "f56a0696035458455a1c210634bd9c3abdb3d6acb332e00f5e327f90e528fba8",
     "shell.css": "703a1fff24775fb2470bee53fcb1f9d4ab8c0e963dc17c32f1735a1efaa42de5",
@@ -12,11 +12,11 @@
     "share.js": "1835057b213f5550b9219ea3ffb6f4a3268641865ded947e3ae5fdd7ecd65991",
     "nav.json": "1465967a1f517e1bf682874d359b41641368931689202d129db0876ee0f2e458",
     "palettes.json": "8acce76979dfeec50d305c8f84e59a83c56b7bbbfa4b45c2f85d631f90bc3c08",
-    "ui-cookie-read.js": "370a9d39abd0d40fb6a85df597fcd9a34c5ea40bb847c87f57d7f0757d6e70bf",
-    "ui-cookie-contract.json": "677ab3413abcad31e6a170d4c77e999d6cb7c22fe2cbc751332e65b66f7975a0",
+    "ui-cookie-read.js": "972a3435d5dc8221733f53524e23412ae6a32f737ab1785c2a4df88e5279398d",
+    "ui-cookie-contract.json": "3a532a97fe211aae8b238ad05140d2f44e6f162be4302ab613aef5c0fe1750d0",
     "favicon.js": "4bb7f9fe412988861d682b8c2a88eb93f68fc39f9fb51bd5df38441755b5d433",
     "favicon.svg": "d0140f4bb1f7fe856fc499f996b347bbbcab55c1f15e2c4a6d94b118c3aa569b",
-    "README.md": "f2eeb5fb85dad4f925192423c8cf51ecec444ae13ae77e66a5d80653e2657240"
+    "README.md": "8d6f839e906cec6ef55476cafdf802fb917b83d51405ad18bd23b2cd2624b0d0"
   },
   "vendored": {
     "web/assets/css/input.css": "d53e42b903fbaee7965f4d44a79dd51b6da1242c4f1cac88d40051745bae2468",
@@ -25,7 +25,7 @@
     "web/assets/js/sgx/shell/share.js": "36bc004012586c0aaaaac84b29e45a9057738c344f768f1725a4960030d68426",
     "web/assets/sgx-shell/nav.json": "1465967a1f517e1bf682874d359b41641368931689202d129db0876ee0f2e458",
     "web/assets/sgx-shell/palettes.json": "8acce76979dfeec50d305c8f84e59a83c56b7bbbfa4b45c2f85d631f90bc3c08",
-    "web/assets/js/sgx/shell/ui-cookie-read.js": "fb7a989c48d715da25ebdadf40bb5305a53d52b38d2f3896e75f21c140b1024a",
-    "tests/fixtures/ui-cookie-contract.json": "677ab3413abcad31e6a170d4c77e999d6cb7c22fe2cbc751332e65b66f7975a0"
+    "web/assets/js/sgx/shell/ui-cookie-read.js": "70484d5efa27f92320707f3a38d251195d74ffcac65785536ed5eed4a9a4cc2f",
+    "tests/fixtures/ui-cookie-contract.json": "3a532a97fe211aae8b238ad05140d2f44e6f162be4302ab613aef5c0fe1750d0"
   }
 }

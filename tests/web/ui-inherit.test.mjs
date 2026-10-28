@@ -18,17 +18,35 @@ test('cookieLang：先过共享读端校验（v 不认识 / 乱码 / 没有 cook
   assert.equal(cookieLang(U, 'sgx-ui=' + enc({ v: '2', lang: 'en' })), '', '版本是字符串');
   assert.equal(cookieLang(U, 'sgx-ui=' + enc({ lang: 'en' })), '', '没有 v');
   assert.equal(cookieLang(U, 'sgx-ui=' + enc({ v: 2, lang: 'fr' })), '');
-  assert.equal(cookieLang(U, 'sgx-ui=' + enc({ v: 2 })), '', '主站写端现在不写 lang');
+  assert.equal(cookieLang(U, 'sgx-ui=' + enc({ v: 2 })), '', '旧 cookie 没有 lang');
+  assert.equal(cookieLang(U, 'sgx-ui=' + enc({ v: 2, lang: '' })), '', '跟随系统 = 空');
+  assert.equal(cookieLang(U, 'sgx-ui=' + enc({ v: 2, lang: 'EN' })), '', '大写不认');
+  assert.equal(cookieLang(U, 'sgx-ui=' + enc({ v: 2, lang: 'en-US' })), '', 'en-US 不认');
   assert.equal(cookieLang(U, 'sgx-ui=%%%'), '');
   assert.equal(cookieLang(U, ''), '');
   assert.equal(cookieLang(undefined, 'sgx-ui=' + enc({ v: 2, lang: 'en' })), '', '读端没加载就不跳');
 });
 
-test('cookieLang：主站以后让 SgxUI.read() 返回 lang 时直接用它', () => {
-  const fake = { read: () => ({ v: 2, lang: 'en' }), decode: () => assert.fail('read 已给出 lang，不该再解原始值') };
+test('cookieLang：只用 SgxUI.read() 校验过的 lang，不再自己解原始 JSON', () => {
+  const fake = { read: () => ({ v: 2, lang: 'en' }), decode: () => assert.fail('不该再解原始值') };
   assert.equal(cookieLang(fake, 'sgx-ui=x'), 'en');
   const fake2 = { read: () => ({ v: 2, lang: '' }), decode: () => ({ lang: 'en' }) };
-  assert.equal(cookieLang(fake2, 'sgx-ui=x'), '', '读端判为不合法就不跟随');
+  assert.equal(cookieLang(fake2, 'sgx-ui=x'), '', '读端判为不合法 / 跟随系统就不跟随');
+  const fake3 = { read: () => ({ v: 2 }), decode: () => assert.fail('不该再解原始值') };
+  assert.equal(cookieLang(fake3, 'sgx-ui=x'), '', '读端没给 lang 就不跟随');
+});
+
+test('cookieLang × 主站契约夹具：每个用例跟随的语言 = 夹具 read.lang（没有 cookie / 版本不认识 = 不跳）', () => {
+  const fx = JSON.parse(read('tests/fixtures/ui-cookie-contract.json'));
+  const want = (c) => (c.read && c.read.lang) || '';
+  for (const c of fx.cases) {
+    assert.equal(cookieLang(U, 'sgx-lock-session=x; sgx-ui=' + c.cookie + '; other=1'), want(c), c.name);
+  }
+  const by = Object.fromEntries(fx.cases.map((c) => [c.name, want(c)]));
+  assert.equal(by['语言：明确选了 English → lang en'], 'en');
+  assert.equal(by['语言：明确选了中文 → lang zh'], 'zh');
+  assert.equal(by['语言：跟随系统 / 存了不认识的值 → lang 空'], '');
+  assert.equal(by['未知版本 v3 带 lang → 当没有 cookie（不跳语言）'], '');
 });
 
 test('langTarget：只在不同的时候跳，保留查询串和 #页签', () => {

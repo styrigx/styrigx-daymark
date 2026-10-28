@@ -1,4 +1,4 @@
-/* @sgx-shell:begin styrigx/styrigx-space@4f29ef5db56095dd9231c3a848eda63701d14a32 web/shared/shell v23673824df0b（scripts/sync-shell.mjs 写入，勿手改） */
+/* @sgx-shell:begin styrigx/styrigx-space@5df9d0130e5243bb2e12220788cee4f13b7f3796 web/shared/shell v004e9054e471（scripts/sync-shell.mjs 写入，勿手改） */
 /* ---- ui-cookie-read.js ---- */
 /**
  * @fileoverview sgx-ui cookie 只读解析器（2026-10-22）：子站（博客 / 日刻 / 珍格）首帧前读主站写的外观，<html> 落到和主站一样的状态。
@@ -13,7 +13,8 @@
  *   data-palette（默认 dustyblue 不写）、自定义色时 --sgx-seed + <style id="sgx-accent-roles">、class reduced-motion、data-reduced-motion。
  *
  * API：
- *   SgxUI.read([cookieString])          → 校验后的对象 {v, mode, pal, accent, fs, rm, mat, tz1, tz2, h12, clock, wx, unit, loc, city, precise} 或 null
+ *   SgxUI.read([cookieString])          → 校验后的对象 {v, mode, pal, accent, fs, rm, mat, lang, tz1, tz2, h12, clock, wx, unit, loc, city, precise} 或 null
+ *       （lang：主站用户明确选的语言 'zh' | 'en'，跟随系统 / 没有 = ''；只给子站决定要不要跳语言，apply() 不管它）
  *   SgxUI.resolve(ui, prefersDark)      → {mode, dark, pal, fs, rm, seed}（seed：accent 是自定义色时为 #rrggbb，否则 ''）
  *   SgxUI.apply([root], [opts])         → 读 cookie + 落到 root（默认 <html>），返回 resolve 的结果；
  *       opts.rolesCss(seed)  同步可用的引擎（palette-scheme.js 的 rolesCss），缓存缺失时直接算；
@@ -90,6 +91,7 @@
       fs: inList(FONT_SIZES, o.fs) ? o.fs : 'standard',
       rm: o.rm === 1 ? 1 : 0,
       mat: typeof o.mat === 'number' && isFinite(o.mat) && o.mat >= 0 ? o.mat : 0,
+      lang: o.lang === 'zh' || o.lang === 'en' ? o.lang : '',
       tz1: o.tz1 === 'auto' ? 'auto' : str(o.tz1, TZ, 'auto'),
       tz2: str(o.tz2, TZ, ''),
       h12: o.h12 === 1 ? 1 : 0,

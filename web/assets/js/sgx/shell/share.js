@@ -1,4 +1,4 @@
-/* @sgx-shell:begin styrigx/styrigx-space@main web/shared/shell v23673824df0b（scripts/sync-shell.mjs 写入，勿手改） */
+/* @sgx-shell:begin styrigx/styrigx-space@5df9d0130e5243bb2e12220788cee4f13b7f3796 web/shared/shell v004e9054e471（scripts/sync-shell.mjs 写入，勿手改） */
 /* ---- share.js ---- */
 /**
  * @fileoverview 子站顶栏的分享按钮（共享外壳组件，2026-10-24；gen-shell 原样复制成 web/shared/shell/share.js，三个子站 sync-shell 同步）。

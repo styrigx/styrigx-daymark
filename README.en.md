@@ -46,7 +46,7 @@ Theme, palette and accent come from the `sgx-ui` cookie written by the main site
 [docs/ui-cookie-contract.md](https://github.com/styrigx/styrigx-space/blob/main/docs/ui-cookie-contract.md) in styrigx-space (Chinese).
 It is read by the main site's shared-shell reader `web/assets/js/sgx/shell/ui-cookie-read.js` (synced verbatim by sync-shell, do not edit),
 inlined into `<head>` by `web/layouts/_default/baseof.html`; `web/assets/js/sgx/ui-inherit-run.js` right after it calls `SgxUI.apply` before first paint.
-Language follow lives in `web/assets/js/sgx/lib/ui-inherit.js` (the main-site writer does not write `lang` yet; it takes effect once it does).
+Language follow lives in `web/assets/js/sgx/lib/ui-inherit.js`: it only uses the reader's `SgxUI.read().lang` (the language the user explicitly picked on the main site, `zh` / `en`; empty = follow system, no redirect).
 The contract fixtures `tests/fixtures/ui-cookie-contract.json` (also synced) run case by case in `tests/web/ui-cookie-contract.test.mjs` and `tests/web/e2e/ui-cookie.spec.js`.
 If the main site changes the cookie format, run `node scripts/sync-shell.mjs` to sync the reader and fixtures; no code change needed here.
 

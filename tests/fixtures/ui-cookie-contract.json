@@ -9,7 +9,7 @@
       "local": {
         "sgx-theme-mode": "light"
       },
-      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6ImxpZ2h0IiwicGFsIjoiZHVzdHlibHVlIiwiYWNjZW50IjoiI2Q0YTcyYyIsImZzIjoic3RhbmRhcmQiLCJybSI6MCwibWF0IjoxNzYxMDYyNDAwMDAwfQ",
+      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6ImxpZ2h0IiwicGFsIjoiZHVzdHlibHVlIiwiYWNjZW50IjoiI2Q0YTcyYyIsImZzIjoic3RhbmRhcmQiLCJybSI6MCwibGFuZyI6IiIsIm1hdCI6MTc2MTA2MjQwMDAwMH0",
       "read": {
         "v": 2,
         "mode": "light",
@@ -18,6 +18,7 @@
         "fs": "standard",
         "rm": 0,
         "mat": 1761062400000,
+        "lang": "",
         "tz1": "auto",
         "tz2": "",
         "h12": 0,
@@ -77,7 +78,7 @@
       "local": {
         "sgx-theme-mode": "dark"
       },
-      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6ImRhcmsiLCJwYWwiOiJkdXN0eWJsdWUiLCJhY2NlbnQiOiIjZDRhNzJjIiwiZnMiOiJzdGFuZGFyZCIsInJtIjowLCJtYXQiOjE3NjEwNjI0MDAwMDB9",
+      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6ImRhcmsiLCJwYWwiOiJkdXN0eWJsdWUiLCJhY2NlbnQiOiIjZDRhNzJjIiwiZnMiOiJzdGFuZGFyZCIsInJtIjowLCJsYW5nIjoiIiwibWF0IjoxNzYxMDYyNDAwMDAwfQ",
       "read": {
         "v": 2,
         "mode": "dark",
@@ -86,6 +87,7 @@
         "fs": "standard",
         "rm": 0,
         "mat": 1761062400000,
+        "lang": "",
         "tz1": "auto",
         "tz2": "",
         "h12": 0,
@@ -143,7 +145,7 @@
       "name": "跟随系统（空 localStorage）",
       "source": "writer",
       "local": {},
-      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6InN5c3RlbSIsInBhbCI6ImR1c3R5Ymx1ZSIsImFjY2VudCI6IiNkNGE3MmMiLCJmcyI6InN0YW5kYXJkIiwicm0iOjAsIm1hdCI6MTc2MTA2MjQwMDAwMH0",
+      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6InN5c3RlbSIsInBhbCI6ImR1c3R5Ymx1ZSIsImFjY2VudCI6IiNkNGE3MmMiLCJmcyI6InN0YW5kYXJkIiwicm0iOjAsImxhbmciOiIiLCJtYXQiOjE3NjEwNjI0MDAwMDB9",
       "read": {
         "v": 2,
         "mode": "system",
@@ -152,6 +154,7 @@
         "fs": "standard",
         "rm": 0,
         "mat": 1761062400000,
+        "lang": "",
         "tz1": "auto",
         "tz2": "",
         "h12": 0,
@@ -212,7 +215,7 @@
         "sgx-theme-mode": "light",
         "sgx-palette": "lake"
       },
-      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6ImxpZ2h0IiwicGFsIjoibGFrZSIsImFjY2VudCI6IiNmMTdmNzIiLCJmcyI6InN0YW5kYXJkIiwicm0iOjAsIm1hdCI6MTc2MTA2MjQwMDAwMH0",
+      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6ImxpZ2h0IiwicGFsIjoibGFrZSIsImFjY2VudCI6IiNmMTdmNzIiLCJmcyI6InN0YW5kYXJkIiwicm0iOjAsImxhbmciOiIiLCJtYXQiOjE3NjEwNjI0MDAwMDB9",
       "read": {
         "v": 2,
         "mode": "light",
@@ -221,6 +224,7 @@
         "fs": "standard",
         "rm": 0,
         "mat": 1761062400000,
+        "lang": "",
         "tz1": "auto",
         "tz2": "",
         "h12": 0,
@@ -281,7 +285,7 @@
         "sgx-theme-mode": "dark",
         "sgx-palette": "xforest"
       },
-      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6ImRhcmsiLCJwYWwiOiJmb3Jlc3QiLCJhY2NlbnQiOiIjZjA4YTNjIiwiZnMiOiJzdGFuZGFyZCIsInJtIjowLCJtYXQiOjE3NjEwNjI0MDAwMDB9",
+      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6ImRhcmsiLCJwYWwiOiJmb3Jlc3QiLCJhY2NlbnQiOiIjZjA4YTNjIiwiZnMiOiJzdGFuZGFyZCIsInJtIjowLCJsYW5nIjoiIiwibWF0IjoxNzYxMDYyNDAwMDAwfQ",
       "read": {
         "v": 2,
         "mode": "dark",
@@ -290,6 +294,7 @@
         "fs": "standard",
         "rm": 0,
         "mat": 1761062400000,
+        "lang": "",
         "tz1": "auto",
         "tz2": "",
         "h12": 0,
@@ -350,7 +355,7 @@
         "sgx-theme-mode": "system",
         "sgx-palette": "violet"
       },
-      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6InN5c3RlbSIsInBhbCI6InZpb2xldCIsImFjY2VudCI6IiNkNDYyOGYiLCJmcyI6InN0YW5kYXJkIiwicm0iOjAsIm1hdCI6MTc2MTA2MjQwMDAwMH0",
+      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6InN5c3RlbSIsInBhbCI6InZpb2xldCIsImFjY2VudCI6IiNkNDYyOGYiLCJmcyI6InN0YW5kYXJkIiwicm0iOjAsImxhbmciOiIiLCJtYXQiOjE3NjEwNjI0MDAwMDB9",
       "read": {
         "v": 2,
         "mode": "system",
@@ -359,6 +364,7 @@
         "fs": "standard",
         "rm": 0,
         "mat": 1761062400000,
+        "lang": "",
         "tz1": "auto",
         "tz2": "",
         "h12": 0,
@@ -419,7 +425,7 @@
         "sgx-theme-mode": "light",
         "sgx-palette": "glacier"
       },
-      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6ImxpZ2h0IiwicGFsIjoiZ2xhY2llciIsImFjY2VudCI6IiNmMTdmNzIiLCJmcyI6InN0YW5kYXJkIiwicm0iOjAsIm1hdCI6MTc2MTA2MjQwMDAwMH0",
+      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6ImxpZ2h0IiwicGFsIjoiZ2xhY2llciIsImFjY2VudCI6IiNmMTdmNzIiLCJmcyI6InN0YW5kYXJkIiwicm0iOjAsImxhbmciOiIiLCJtYXQiOjE3NjEwNjI0MDAwMDB9",
       "read": {
         "v": 2,
         "mode": "light",
@@ -428,6 +434,7 @@
         "fs": "standard",
         "rm": 0,
         "mat": 1761062400000,
+        "lang": "",
         "tz1": "auto",
         "tz2": "",
         "h12": 0,
@@ -487,7 +494,7 @@
       "local": {
         "sgx-accent": "#1F8A70"
       },
-      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6InN5c3RlbSIsInBhbCI6ImR1c3R5Ymx1ZSIsImFjY2VudCI6IiMxZjhhNzAiLCJmcyI6InN0YW5kYXJkIiwicm0iOjAsIm1hdCI6MTc2MTA2MjQwMDAwMH0",
+      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6InN5c3RlbSIsInBhbCI6ImR1c3R5Ymx1ZSIsImFjY2VudCI6IiMxZjhhNzAiLCJmcyI6InN0YW5kYXJkIiwicm0iOjAsImxhbmciOiIiLCJtYXQiOjE3NjEwNjI0MDAwMDB9",
       "read": {
         "v": 2,
         "mode": "system",
@@ -496,6 +503,7 @@
         "fs": "standard",
         "rm": 0,
         "mat": 1761062400000,
+        "lang": "",
         "tz1": "auto",
         "tz2": "",
         "h12": 0,
@@ -557,7 +565,7 @@
         "sgx-palette": "xrose",
         "sgx-accent": "#d0a020"
       },
-      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6ImRhcmsiLCJwYWwiOiJyb3NlIiwiYWNjZW50IjoiI2QwYTAyMCIsImZzIjoic3RhbmRhcmQiLCJybSI6MCwibWF0IjoxNzYxMDYyNDAwMDAwfQ",
+      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6ImRhcmsiLCJwYWwiOiJyb3NlIiwiYWNjZW50IjoiI2QwYTAyMCIsImZzIjoic3RhbmRhcmQiLCJybSI6MCwibGFuZyI6IiIsIm1hdCI6MTc2MTA2MjQwMDAwMH0",
       "read": {
         "v": 2,
         "mode": "dark",
@@ -566,6 +574,7 @@
         "fs": "standard",
         "rm": 0,
         "mat": 1761062400000,
+        "lang": "",
         "tz1": "auto",
         "tz2": "",
         "h12": 0,
@@ -620,7 +629,7 @@
       }
     },
     {
-      "name": "旧的大字号 + 减弱动效 key 不再生效 + 时钟 / 天气字段（中文城市名）",
+      "name": "旧的大字号 + 减弱动效 key 不再生效 + 时钟 / 天气字段（手动城市：坐标不进 cookie）",
       "source": "writer",
       "local": {
         "sgx-font-size": "large",
@@ -635,7 +644,7 @@
         "sgx-weather-loc": "city",
         "sgx-weather-city": "{\"name\":\"上海\",\"lat\":31.23,\"lon\":121.47}"
       },
-      "cookie": "eyJ2IjoyLCJ0ejEiOiJBc2lhL1NoYW5naGFpIiwidHoyIjoiQW1lcmljYS9Mb3NfQW5nZWxlcyIsImgxMiI6MSwiY2xvY2siOiJhbmFsb2ciLCJ3eCI6MCwidW5pdCI6ImYiLCJsb2MiOiJjaXR5IiwiY2l0eSI6eyJuYW1lIjoi5LiK5rW3IiwibGF0IjozMS4yMywibG9uIjoxMjEuNDd9LCJwcmVjaXNlIjpudWxsLCJtb2RlIjoic3lzdGVtIiwicGFsIjoiZHVzdHlibHVlIiwiYWNjZW50IjoiI2Q0YTcyYyIsImZzIjoic3RhbmRhcmQiLCJybSI6MCwibWF0IjoxNzYxMDYyNDAwMDAwfQ",
+      "cookie": "eyJ2IjoyLCJ0ejEiOiJBc2lhL1NoYW5naGFpIiwidHoyIjoiQW1lcmljYS9Mb3NfQW5nZWxlcyIsImgxMiI6MSwiY2xvY2siOiJhbmFsb2ciLCJ3eCI6MCwidW5pdCI6ImYiLCJsb2MiOiJjaXR5IiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6InN5c3RlbSIsInBhbCI6ImR1c3R5Ymx1ZSIsImFjY2VudCI6IiNkNGE3MmMiLCJmcyI6InN0YW5kYXJkIiwicm0iOjAsImxhbmciOiIiLCJtYXQiOjE3NjEwNjI0MDAwMDB9",
       "read": {
         "v": 2,
         "mode": "system",
@@ -644,6 +653,7 @@
         "fs": "standard",
         "rm": 0,
         "mat": 1761062400000,
+        "lang": "",
         "tz1": "Asia/Shanghai",
         "tz2": "America/Los_Angeles",
         "h12": 1,
@@ -651,11 +661,78 @@
         "wx": 0,
         "unit": "f",
         "loc": "city",
-        "city": {
-          "name": "上海",
-          "lat": 31.23,
-          "lon": 121.47
+        "city": null,
+        "precise": null
+      },
+      "light": {
+        "resolve": {
+          "mode": "system",
+          "dark": false,
+          "pal": "dustyblue",
+          "fs": "standard",
+          "rm": false,
+          "seed": ""
         },
+        "root": {
+          "dark": false,
+          "data-theme-mode": "system",
+          "data-dark": "0",
+          "data-font-size": "standard",
+          "fontSize": "",
+          "data-palette": null,
+          "--sgx-seed": "",
+          "reduced-motion": false,
+          "data-reduced-motion": "0"
+        }
+      },
+      "dark": {
+        "resolve": {
+          "mode": "system",
+          "dark": true,
+          "pal": "dustyblue",
+          "fs": "standard",
+          "rm": false,
+          "seed": ""
+        },
+        "root": {
+          "dark": true,
+          "data-theme-mode": "system",
+          "data-dark": "1",
+          "data-font-size": "standard",
+          "fontSize": "",
+          "data-palette": null,
+          "--sgx-seed": "",
+          "reduced-motion": false,
+          "data-reduced-motion": "0"
+        }
+      }
+    },
+    {
+      "name": "精确定位：坐标不进 cookie（precise / city 恒为 null，只留 loc）",
+      "source": "writer",
+      "local": {
+        "sgx-weather-loc": "precise",
+        "sgx-weather-precise": "{\"lat\":34.05,\"lon\":-118.24,\"t\":1761062400000}",
+        "sgx-weather-city": "{\"name\":\"上海\",\"lat\":31.23,\"lon\":121.47}"
+      },
+      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJwcmVjaXNlIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6InN5c3RlbSIsInBhbCI6ImR1c3R5Ymx1ZSIsImFjY2VudCI6IiNkNGE3MmMiLCJmcyI6InN0YW5kYXJkIiwicm0iOjAsImxhbmciOiIiLCJtYXQiOjE3NjEwNjI0MDAwMDB9",
+      "read": {
+        "v": 2,
+        "mode": "system",
+        "pal": "dustyblue",
+        "accent": "#d4a72c",
+        "fs": "standard",
+        "rm": 0,
+        "mat": 1761062400000,
+        "lang": "",
+        "tz1": "auto",
+        "tz2": "",
+        "h12": 0,
+        "clock": "digital",
+        "wx": 1,
+        "unit": "c",
+        "loc": "precise",
+        "city": null,
         "precise": null
       },
       "light": {
@@ -708,7 +785,7 @@
         "sgx-font-size": "small",
         "sgx-theme-mode": "light"
       },
-      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6ImxpZ2h0IiwicGFsIjoiZHVzdHlibHVlIiwiYWNjZW50IjoiI2Q0YTcyYyIsImZzIjoic3RhbmRhcmQiLCJybSI6MCwibWF0IjoxNzYxMDYyNDAwMDAwfQ",
+      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6ImxpZ2h0IiwicGFsIjoiZHVzdHlibHVlIiwiYWNjZW50IjoiI2Q0YTcyYyIsImZzIjoic3RhbmRhcmQiLCJybSI6MCwibGFuZyI6IiIsIm1hdCI6MTc2MTA2MjQwMDAwMH0",
       "read": {
         "v": 2,
         "mode": "light",
@@ -717,6 +794,7 @@
         "fs": "standard",
         "rm": 0,
         "mat": 1761062400000,
+        "lang": "",
         "tz1": "auto",
         "tz2": "",
         "h12": 0,
@@ -777,7 +855,7 @@
         "sgx-palette": "neon",
         "sgx-theme-mode": "dark"
       },
-      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6ImRhcmsiLCJwYWwiOiJkdXN0eWJsdWUiLCJhY2NlbnQiOiIjZDRhNzJjIiwiZnMiOiJzdGFuZGFyZCIsInJtIjowLCJtYXQiOjE3NjEwNjI0MDAwMDB9",
+      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6ImRhcmsiLCJwYWwiOiJkdXN0eWJsdWUiLCJhY2NlbnQiOiIjZDRhNzJjIiwiZnMiOiJzdGFuZGFyZCIsInJtIjowLCJsYW5nIjoiIiwibWF0IjoxNzYxMDYyNDAwMDAwfQ",
       "read": {
         "v": 2,
         "mode": "dark",
@@ -786,6 +864,216 @@
         "fs": "standard",
         "rm": 0,
         "mat": 1761062400000,
+        "lang": "",
+        "tz1": "auto",
+        "tz2": "",
+        "h12": 0,
+        "clock": "digital",
+        "wx": 1,
+        "unit": "c",
+        "loc": "auto",
+        "city": null,
+        "precise": null
+      },
+      "light": {
+        "resolve": {
+          "mode": "dark",
+          "dark": true,
+          "pal": "dustyblue",
+          "fs": "standard",
+          "rm": false,
+          "seed": ""
+        },
+        "root": {
+          "dark": true,
+          "data-theme-mode": "dark",
+          "data-dark": "1",
+          "data-font-size": "standard",
+          "fontSize": "",
+          "data-palette": null,
+          "--sgx-seed": "",
+          "reduced-motion": false,
+          "data-reduced-motion": "0"
+        }
+      },
+      "dark": {
+        "resolve": {
+          "mode": "dark",
+          "dark": true,
+          "pal": "dustyblue",
+          "fs": "standard",
+          "rm": false,
+          "seed": ""
+        },
+        "root": {
+          "dark": true,
+          "data-theme-mode": "dark",
+          "data-dark": "1",
+          "data-font-size": "standard",
+          "fontSize": "",
+          "data-palette": null,
+          "--sgx-seed": "",
+          "reduced-motion": false,
+          "data-reduced-motion": "0"
+        }
+      }
+    },
+    {
+      "name": "语言：明确选了 English → lang en",
+      "source": "writer",
+      "local": {
+        "sgx-lang": "en",
+        "sgx-theme-mode": "light"
+      },
+      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6ImxpZ2h0IiwicGFsIjoiZHVzdHlibHVlIiwiYWNjZW50IjoiI2Q0YTcyYyIsImZzIjoic3RhbmRhcmQiLCJybSI6MCwibGFuZyI6ImVuIiwibWF0IjoxNzYxMDYyNDAwMDAwfQ",
+      "read": {
+        "v": 2,
+        "mode": "light",
+        "pal": "dustyblue",
+        "accent": "#d4a72c",
+        "fs": "standard",
+        "rm": 0,
+        "mat": 1761062400000,
+        "lang": "en",
+        "tz1": "auto",
+        "tz2": "",
+        "h12": 0,
+        "clock": "digital",
+        "wx": 1,
+        "unit": "c",
+        "loc": "auto",
+        "city": null,
+        "precise": null
+      },
+      "light": {
+        "resolve": {
+          "mode": "light",
+          "dark": false,
+          "pal": "dustyblue",
+          "fs": "standard",
+          "rm": false,
+          "seed": ""
+        },
+        "root": {
+          "dark": false,
+          "data-theme-mode": "light",
+          "data-dark": "0",
+          "data-font-size": "standard",
+          "fontSize": "",
+          "data-palette": null,
+          "--sgx-seed": "",
+          "reduced-motion": false,
+          "data-reduced-motion": "0"
+        }
+      },
+      "dark": {
+        "resolve": {
+          "mode": "light",
+          "dark": false,
+          "pal": "dustyblue",
+          "fs": "standard",
+          "rm": false,
+          "seed": ""
+        },
+        "root": {
+          "dark": false,
+          "data-theme-mode": "light",
+          "data-dark": "0",
+          "data-font-size": "standard",
+          "fontSize": "",
+          "data-palette": null,
+          "--sgx-seed": "",
+          "reduced-motion": false,
+          "data-reduced-motion": "0"
+        }
+      }
+    },
+    {
+      "name": "语言：明确选了中文 → lang zh",
+      "source": "writer",
+      "local": {
+        "sgx-lang": "zh"
+      },
+      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6InN5c3RlbSIsInBhbCI6ImR1c3R5Ymx1ZSIsImFjY2VudCI6IiNkNGE3MmMiLCJmcyI6InN0YW5kYXJkIiwicm0iOjAsImxhbmciOiJ6aCIsIm1hdCI6MTc2MTA2MjQwMDAwMH0",
+      "read": {
+        "v": 2,
+        "mode": "system",
+        "pal": "dustyblue",
+        "accent": "#d4a72c",
+        "fs": "standard",
+        "rm": 0,
+        "mat": 1761062400000,
+        "lang": "zh",
+        "tz1": "auto",
+        "tz2": "",
+        "h12": 0,
+        "clock": "digital",
+        "wx": 1,
+        "unit": "c",
+        "loc": "auto",
+        "city": null,
+        "precise": null
+      },
+      "light": {
+        "resolve": {
+          "mode": "system",
+          "dark": false,
+          "pal": "dustyblue",
+          "fs": "standard",
+          "rm": false,
+          "seed": ""
+        },
+        "root": {
+          "dark": false,
+          "data-theme-mode": "system",
+          "data-dark": "0",
+          "data-font-size": "standard",
+          "fontSize": "",
+          "data-palette": null,
+          "--sgx-seed": "",
+          "reduced-motion": false,
+          "data-reduced-motion": "0"
+        }
+      },
+      "dark": {
+        "resolve": {
+          "mode": "system",
+          "dark": true,
+          "pal": "dustyblue",
+          "fs": "standard",
+          "rm": false,
+          "seed": ""
+        },
+        "root": {
+          "dark": true,
+          "data-theme-mode": "system",
+          "data-dark": "1",
+          "data-font-size": "standard",
+          "fontSize": "",
+          "data-palette": null,
+          "--sgx-seed": "",
+          "reduced-motion": false,
+          "data-reduced-motion": "0"
+        }
+      }
+    },
+    {
+      "name": "语言：跟随系统 / 存了不认识的值 → lang 空",
+      "source": "writer",
+      "local": {
+        "sgx-lang": "system",
+        "sgx-theme-mode": "dark"
+      },
+      "cookie": "eyJ2IjoyLCJ0ejEiOiJhdXRvIiwidHoyIjoiIiwiaDEyIjowLCJjbG9jayI6ImRpZ2l0YWwiLCJ3eCI6MSwidW5pdCI6ImMiLCJsb2MiOiJhdXRvIiwiY2l0eSI6bnVsbCwicHJlY2lzZSI6bnVsbCwibW9kZSI6ImRhcmsiLCJwYWwiOiJkdXN0eWJsdWUiLCJhY2NlbnQiOiIjZDRhNzJjIiwiZnMiOiJzdGFuZGFyZCIsInJtIjowLCJsYW5nIjoiIiwibWF0IjoxNzYxMDYyNDAwMDAwfQ",
+      "read": {
+        "v": 2,
+        "mode": "dark",
+        "pal": "dustyblue",
+        "accent": "#d4a72c",
+        "fs": "standard",
+        "rm": 0,
+        "mat": 1761062400000,
+        "lang": "",
         "tz1": "auto",
         "tz2": "",
         "h12": 0,
@@ -899,6 +1187,7 @@
         "fs": "standard",
         "rm": 0,
         "mat": 0,
+        "lang": "",
         "tz1": "auto",
         "tz2": "Europe/London",
         "h12": 0,
@@ -964,6 +1253,7 @@
         "fs": "large",
         "rm": 1,
         "mat": 0,
+        "lang": "",
         "tz1": "auto",
         "tz2": "",
         "h12": 0,
@@ -1029,6 +1319,7 @@
         "fs": "small",
         "rm": 0,
         "mat": 1750000000000,
+        "lang": "",
         "tz1": "auto",
         "tz2": "",
         "h12": 0,
@@ -1085,7 +1376,7 @@
     {
       "name": "字段不合法 → 各自按默认",
       "source": "handmade",
-      "cookie": "eyJ2IjoyLCJtb2RlIjoiYmx1ZSIsInBhbCI6Im5lb24iLCJhY2NlbnQiOiIjR0dHR0dHIiwiZnMiOiJodWdlIiwicm0iOnRydWUsIm1hdCI6LTUsInR6MSI6Ii4uLy4uL2V0YyIsInR6MiI6NSwiaDEyIjoiMSIsImNsb2NrIjoic3VuZGlhbCIsInd4Ijoibm8iLCJ1bml0IjoiayIsImxvYyI6IlNPTUUgUExBQ0UiLCJjaXR5IjpbMSwyXSwicHJlY2lzZSI6IngifQ",
+      "cookie": "eyJ2IjoyLCJtb2RlIjoiYmx1ZSIsInBhbCI6Im5lb24iLCJhY2NlbnQiOiIjR0dHR0dHIiwiZnMiOiJodWdlIiwicm0iOnRydWUsIm1hdCI6LTUsImxhbmciOiJmciIsInR6MSI6Ii4uLy4uL2V0YyIsInR6MiI6NSwiaDEyIjoiMSIsImNsb2NrIjoic3VuZGlhbCIsInd4Ijoibm8iLCJ1bml0IjoiayIsImxvYyI6IlNPTUUgUExBQ0UiLCJjaXR5IjpbMSwyXSwicHJlY2lzZSI6IngifQ",
       "read": {
         "v": 2,
         "mode": "system",
@@ -1094,6 +1385,7 @@
         "fs": "standard",
         "rm": 0,
         "mat": 0,
+        "lang": "",
         "tz1": "auto",
         "tz2": "",
         "h12": 0,
@@ -1159,6 +1451,7 @@
         "fs": "standard",
         "rm": 0,
         "mat": 0,
+        "lang": "",
         "tz1": "auto",
         "tz2": "",
         "h12": 0,
@@ -1224,6 +1517,7 @@
         "fs": "standard",
         "rm": 0,
         "mat": 1750000000000,
+        "lang": "",
         "tz1": "auto",
         "tz2": "",
         "h12": 0,
@@ -1289,6 +1583,7 @@
         "fs": "standard",
         "rm": 0,
         "mat": 1750000000000,
+        "lang": "",
         "tz1": "auto",
         "tz2": "",
         "h12": 0,
@@ -1354,6 +1649,7 @@
         "fs": "standard",
         "rm": 0,
         "mat": 1750000000000,
+        "lang": "",
         "tz1": "auto",
         "tz2": "",
         "h12": 0,
@@ -1419,6 +1715,7 @@
         "fs": "standard",
         "rm": 0,
         "mat": 0,
+        "lang": "",
         "tz1": "auto",
         "tz2": "",
         "h12": 0,
@@ -1484,6 +1781,7 @@
         "fs": "standard",
         "rm": 0,
         "mat": 0,
+        "lang": "",
         "tz1": "auto",
         "tz2": "",
         "h12": 0,
@@ -1549,6 +1847,139 @@
         "fs": "standard",
         "rm": 0,
         "mat": 0,
+        "lang": "",
+        "tz1": "auto",
+        "tz2": "",
+        "h12": 0,
+        "clock": "digital",
+        "wx": 1,
+        "unit": "c",
+        "loc": "auto",
+        "city": null,
+        "precise": null
+      },
+      "light": {
+        "resolve": {
+          "mode": "system",
+          "dark": false,
+          "pal": "dustyblue",
+          "fs": "standard",
+          "rm": false,
+          "seed": ""
+        },
+        "root": {
+          "dark": false,
+          "data-theme-mode": "system",
+          "data-dark": "0",
+          "data-font-size": "standard",
+          "fontSize": "",
+          "data-palette": null,
+          "--sgx-seed": "",
+          "reduced-motion": false,
+          "data-reduced-motion": "0"
+        }
+      },
+      "dark": {
+        "resolve": {
+          "mode": "system",
+          "dark": true,
+          "pal": "dustyblue",
+          "fs": "standard",
+          "rm": false,
+          "seed": ""
+        },
+        "root": {
+          "dark": true,
+          "data-theme-mode": "system",
+          "data-dark": "1",
+          "data-font-size": "standard",
+          "fontSize": "",
+          "data-palette": null,
+          "--sgx-seed": "",
+          "reduced-motion": false,
+          "data-reduced-motion": "0"
+        }
+      }
+    },
+    {
+      "name": "lang 大写 EN → 不认（写端只写 zh / en）",
+      "source": "handmade",
+      "cookie": "eyJ2IjoyLCJsYW5nIjoiRU4iLCJtb2RlIjoibGlnaHQifQ",
+      "read": {
+        "v": 2,
+        "mode": "light",
+        "pal": "dustyblue",
+        "accent": "",
+        "fs": "standard",
+        "rm": 0,
+        "mat": 0,
+        "lang": "",
+        "tz1": "auto",
+        "tz2": "",
+        "h12": 0,
+        "clock": "digital",
+        "wx": 1,
+        "unit": "c",
+        "loc": "auto",
+        "city": null,
+        "precise": null
+      },
+      "light": {
+        "resolve": {
+          "mode": "light",
+          "dark": false,
+          "pal": "dustyblue",
+          "fs": "standard",
+          "rm": false,
+          "seed": ""
+        },
+        "root": {
+          "dark": false,
+          "data-theme-mode": "light",
+          "data-dark": "0",
+          "data-font-size": "standard",
+          "fontSize": "",
+          "data-palette": null,
+          "--sgx-seed": "",
+          "reduced-motion": false,
+          "data-reduced-motion": "0"
+        }
+      },
+      "dark": {
+        "resolve": {
+          "mode": "light",
+          "dark": false,
+          "pal": "dustyblue",
+          "fs": "standard",
+          "rm": false,
+          "seed": ""
+        },
+        "root": {
+          "dark": false,
+          "data-theme-mode": "light",
+          "data-dark": "0",
+          "data-font-size": "standard",
+          "fontSize": "",
+          "data-palette": null,
+          "--sgx-seed": "",
+          "reduced-motion": false,
+          "data-reduced-motion": "0"
+        }
+      }
+    },
+    {
+      "name": "旧 v1 带 lang → 照样认（读端不按版本挑字段）",
+      "source": "handmade",
+      "cookie": "eyJ2IjoxLCJ0ejEiOiJhdXRvIiwibGFuZyI6ImVuIn0",
+      "read": {
+        "v": 1,
+        "mode": "system",
+        "pal": "dustyblue",
+        "accent": "",
+        "fs": "standard",
+        "rm": 0,
+        "mat": 0,
+        "lang": "en",
         "tz1": "auto",
         "tz2": "",
         "h12": 0,
@@ -1606,6 +2037,54 @@
       "name": "未知版本 v3",
       "source": "handmade",
       "cookie": "eyJ2IjozLCJtb2RlIjoiZGFyayIsInBhbCI6ImZvcmVzdCJ9",
+      "read": null,
+      "light": {
+        "resolve": {
+          "mode": "system",
+          "dark": false,
+          "pal": "dustyblue",
+          "fs": "standard",
+          "rm": false,
+          "seed": ""
+        },
+        "root": {
+          "dark": false,
+          "data-theme-mode": "system",
+          "data-dark": "0",
+          "data-font-size": "standard",
+          "fontSize": "",
+          "data-palette": null,
+          "--sgx-seed": "",
+          "reduced-motion": false,
+          "data-reduced-motion": "0"
+        }
+      },
+      "dark": {
+        "resolve": {
+          "mode": "system",
+          "dark": true,
+          "pal": "dustyblue",
+          "fs": "standard",
+          "rm": false,
+          "seed": ""
+        },
+        "root": {
+          "dark": true,
+          "data-theme-mode": "system",
+          "data-dark": "1",
+          "data-font-size": "standard",
+          "fontSize": "",
+          "data-palette": null,
+          "--sgx-seed": "",
+          "reduced-motion": false,
+          "data-reduced-motion": "0"
+        }
+      }
+    },
+    {
+      "name": "未知版本 v3 带 lang → 当没有 cookie（不跳语言）",
+      "source": "handmade",
+      "cookie": "eyJ2IjozLCJtb2RlIjoiZGFyayIsImxhbmciOiJlbiJ9",
       "read": null,
       "light": {
         "resolve": {

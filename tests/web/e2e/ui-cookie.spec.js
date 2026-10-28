@@ -2,7 +2,7 @@
 // - 每个用例：带上 cookie、系统浅色 / 深色各加载一次，<html> 状态 = 夹具的 light.root / dark.root（共享读端 SgxUI.apply 内联在 <head>）
 // - 选湖蓝 lake 必须写 data-palette="lake"（不能当默认渲染成 dustyblue）
 // - 自定义主题色：没缓存时加载 shell-accent.js 算角色，写 <style id="sgx-accent-roles"> 和本站缓存
-// - 语言：cookie 带 lang（主站写端以后会加）且版本合法才跳到另一种语言的同一页；版本不认识不跳
+// - 语言：cookie 带 lang（主站写端 2026-10-27 起写，zh / en）且版本合法才跳到另一种语言的同一页；版本不认识 / lang 空不跳
 const { test, expect } = require('@playwright/test');
 const fx = require('../../fixtures/ui-cookie-contract.json');
 
