@@ -6,8 +6,8 @@
  * （baseof.html 原样内联，挂 window.SgxUI；ui-inherit-run.js 调 SgxUI.apply）。契约见主站 styrigx-space docs/ui-cookie-contract.md，
  * 夹具 tests/fixtures/ui-cookie-contract.json 由 tests/web/ui-cookie-contract.test.mjs 逐个跑。
  *
- * 语言也先过共享读端的校验（版本 v 不认识 / 乱码 = 没有 cookie，不跳）。主站写端现在还不写 lang，所以语言跟随暂时不会触发；
- * 主站以后加上 lang 时两种情况都兼容：SgxUI.read() 返回了 lang 就用它，没返回就从同一份 cookie 的原始 JSON 取。
+ * 语言只认共享读端 SgxUI.read() 校验过的 lang（主站 2026-10-27 起写：用户明确选的 'zh' | 'en'，跟随系统 = '' 不跳）；
+ * 版本 v 不认识 / 乱码 / 没有 cookie = 不跳，大写、en-US 之类读端判为 '' 也不跳。不再自己解 cookie 的原始 JSON。
  */
 
 /**
@@ -18,13 +18,7 @@
  */
 export function cookieLang(U, cookieHeader) {
   const ui = U && typeof U.read === 'function' ? U.read(String(cookieHeader || '')) : null;
-  if (!ui) return '';
-  let lang = ui.lang;
-  if (lang === undefined) {
-    const m = String(cookieHeader || '').match(/(?:^|;\s*)sgx-ui=([^;]*)/);
-    const raw = m ? U.decode(m[1]) : null;
-    lang = raw ? raw.lang : undefined;
-  }
+  const lang = ui ? ui.lang : '';
   return lang === 'zh' || lang === 'en' ? lang : '';
 }
 
