@@ -10,6 +10,8 @@
 
 ![Hugo](https://img.shields.io/badge/dynamic/yaml?url=https://raw.githubusercontent.com/styrigx/styrigx-space/main/.github/actions/setup-hugo/action.yml&query=%24..HUGO_VERSION&label=Hugo&style=flat-square&color=2563eb&logo=hugo)
 ![Version](https://img.shields.io/badge/dynamic/yaml?url=https://raw.githubusercontent.com/styrigx/styrigx-daymark/main/web/hugo.yaml&query=%24.params.version&label=Daymark&style=flat-square&color=2563eb)
+![Tailwind CSS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/styrigx/styrigx-daymark/main/package-lock.json&query=%24.packages%5B%27node_modules%2Ftailwindcss%27%5D.version&label=Tailwind%20CSS&style=flat-square&color=2563eb&logo=tailwindcss)
+![Styrigx UI](https://img.shields.io/badge/dynamic/yaml?url=https://raw.githubusercontent.com/styrigx/styrigx-space/main/web/data/version.yaml&query=%24.ui&label=Styrigx%20UI&style=flat-square&color=2563eb)
 ![Deploy](https://img.shields.io/github/actions/workflow/status/styrigx/styrigx-daymark/deploy.yml?style=flat-square&label=Deploy&color=2563eb)
 ![License](https://img.shields.io/badge/License-MIT-2563eb?style=flat-square)
 
@@ -19,7 +21,7 @@
 
 ## 这是什么
 
-Styrigx's Space 的子站。读到、听到、想到一句好话，打开就记下；每天从公开的句子里挑一句，主站首页也能显示。界面是和博客同款的沉浸式 app：左边九宫格切站，中间「余响 · 拾录 · 百味」三个页签，右边分享按钮（管理员生成带临时会话的短链，访客分享当前页）；深浅色、调色板、强调色、语言都跟主站设置走（`sgx-ui` cookie，首帧前读，不闪屏）。
+Styrigx's Space 的子站：自己的仓库、自己的 Pages、自己的 Worker（`styrigx-daymark-core`）和 D1。读到、听到、想到一句好话，打开就记下；每天从公开的句子里挑一句，主站首页也能显示。界面是和博客同款的 Styrigx UI 沉浸式 app：左边九宫格切站，中间「余响 · 拾录 · 百味」三个页签，右边分享按钮（管理员生成带临时会话的短链，访客分享当前页）；深浅色、调色板、强调色、语言都跟主站设置走（`sgx-ui` cookie，首帧前读，不闪屏）。
 
 ## 能做什么
 
