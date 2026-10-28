@@ -8,13 +8,20 @@ Lines worth keeping, saved as they come, one shown each day.
 
 [daymark.styrigx.com](https://daymark.styrigx.com) · [styrigx.com](https://styrigx.com) · [blog.styrigx.com](https://blog.styrigx.com) · [GitHub @styrigx](https://github.com/styrigx)
 
+![Hugo](https://img.shields.io/badge/dynamic/yaml?url=https://raw.githubusercontent.com/styrigx/styrigx-space/main/.github/actions/setup-hugo/action.yml&query=%24..HUGO_VERSION&label=Hugo&style=flat-square&color=2563eb&logo=hugo)
+![Tailwind CSS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/styrigx/styrigx-daymark/main/package-lock.json&query=%24.packages%5B%27node_modules%2Ftailwindcss%27%5D.version&label=Tailwind%20CSS&style=flat-square&color=2563eb&logo=tailwindcss)
+![Styrigx UI](https://img.shields.io/badge/dynamic/yaml?url=https://raw.githubusercontent.com/styrigx/styrigx-space/main/web/data/version.yaml&query=%24.ui&label=Styrigx%20UI&style=flat-square&color=2563eb)
+![Version](https://img.shields.io/badge/dynamic/yaml?url=https://raw.githubusercontent.com/styrigx/styrigx-daymark/main/web/hugo.yaml&query=%24.params.version&label=Daymark&style=flat-square&color=2563eb)
+![Deploy](https://img.shields.io/github/actions/workflow/status/styrigx/styrigx-daymark/deploy.yml?style=flat-square&label=Deploy&color=2563eb)
+![License](https://img.shields.io/badge/License-MIT-2563eb?style=flat-square)
+
 </div>
 
 ---
 
 ## What it is
 
-A sub-site of Styrigx's Space. Save a line you read, heard or thought of; one public line is picked per day (Beijing time), and the main site's home can show it too. It is an immersive app like the blog: app grid on the left, three tabs Echo · Trove · Flavors in the middle, avatar on the right. Theme, palette, accent and language follow the main site's settings (the `sgx-ui` cookie, read before first paint).
+A sub-site of Styrigx's Space, with its own repo, Pages project, Worker (`styrigx-daymark-core`) and D1 database. Save a line you read, heard or thought of; one public line is picked per day (Beijing time), and the main site's home can show it too. It is a Styrigx UI immersive app like the blog: app grid on the left, three tabs Echo · Trove · Flavors in the middle, share button on the right (the admin generates a short link with a temporary session; visitors share the current page). Theme, palette, accent and language follow the main site's settings (the `sgx-ui` cookie, read before first paint).
 
 ## Features
 
