@@ -28,7 +28,7 @@ styrigx-daymark/
 | `assets/sgx-shell/` | 主站共享外壳的抽屉项 + 图标（`nav.json`）、预设种子（`palettes.json`），`scripts/sync-shell.mjs` 同步，勿手改 |
 | `assets/css/input.css` | 样式；`@sgx-shell:begin … end` 之间是主站共享外壳（色彩角色 + 顶栏材质 + 导航抽屉，`scripts/sync-shell.mjs` 写入，勿手改），后面的 `--m-*` 只是角色的别名 |
 | `assets/js/sgx-lock-sync.js` | 切回前台复查会话，401 → 刷新去主站锁屏 |
-| `static/_worker.js` | 只把 `*.pages.dev` 跳回 `daymark.styrigx.com`（不经网关的地址不能直接开页面） |
+| `static/_worker.js` | 把 `*.pages.dev` 跳回 `daymark.styrigx.com`（不经网关的地址不能直接开页面）；像图片的回答一律 404（图片一律要过会话，Pages 不验会话，本站没有图片，要加也只能走 core 的 `/api/*`；只放行 `/favicon.ico` 跳主站头像的 302） |
 
 CSS 类名里的 `bk-` 前缀沿用自 styrigx-book 的共用组件（弹层、标题行），本站新写的用 `dm-`。
 

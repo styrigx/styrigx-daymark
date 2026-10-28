@@ -92,6 +92,18 @@ jobs:
           fi
           echo "OK: all /js/ refs are fingerprinted."
 
+      - name: Check no image files in build output
+        # 图片一律要过会话（2026-10-29）：Pages 不验会话，所以构建产物里一张图片都不许有；
+        # 图片只能从接口 Worker 的 /api/* 出（先问网关会话）。web/static/_worker.js 运行时也会把像图片的回答一律 404。
+        run: |
+          bad=$(find web/public -type f | grep -iE '\.(png|apng|jpe?g|jfif|pjpeg|pjp|gif|webp|avif|svgz?|ico|cur|bmp|tiff?|heic|heif|jxl)$' || true)
+          if [ -n "$bad" ]; then
+            echo "ERROR: image files in build output (images must go through a session-checked /api/* endpoint):"
+            echo "$bad"
+            exit 1
+          fi
+          echo "OK: no image files in build output."
+
       - name: Upload site build
         # 部署 job 直接用这份产物，不再重建
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -220,6 +232,14 @@ jobs:
           for p in / /en/ /zh/ /sitemap.xml; do probe "https://daymark.styrigx.com$p" 302 worker || ok=1; done
           js=$(cd web/public && find js -maxdepth 1 -name '*.js' | head -1)
           [ -n "$js" ] && { probe "https://daymark.styrigx.com/$js" 200 none || ok=1; }
+          # 图片一律要过会话：没会话取图片路径不得拿到图片。现在网关对图片后缀直接回源，Pages 的 _worker.js 回 404；
+          # 网关以后改成图片也验会话时是 302 到锁屏。两种都算过，200 或其它一律红。
+          hdr=$(curl -sS -o /dev/null -D - -w 'HTTP_CODE:%{http_code}\n' "https://daymark.styrigx.com/sgx-image-probe.png" | tr -d '\r' || true)
+          code=$(printf '%s' "$hdr" | sed -n 's/^HTTP_CODE://p')
+          ct=$(printf '%s' "$hdr" | awk -F': ' 'tolower($1)=="content-type"{print $2}')
+          echo "/sgx-image-probe.png -> $code ${ct:-no-type}"
+          case "$code" in 404|302) ;; *) echo "::error::image path without session answered $code"; ok=1 ;; esac
+          case "$ct" in image/*) echo "::error::image path without session returned an image"; ok=1 ;; esac
           hdr=$(curl -sS -o /dev/null -D - -w 'HTTP_CODE:%{http_code}\n' https://styrigx-daymark.pages.dev/ | tr -d '\r' || true)
           code=$(printf '%s' "$hdr" | sed -n 's/^HTTP_CODE://p')
           loc=$(printf '%s' "$hdr" | awk -F': ' 'tolower($1)=="location"{print $2}')
